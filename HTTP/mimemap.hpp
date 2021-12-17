@@ -1,0 +1,31 @@
+//
+//  mimemap.hpp
+//
+//  Created by Frederick Benjamin Woodruff on 20/07/2021.
+//
+
+#ifndef mimemap_hpp
+#define mimemap_hpp
+
+#include <unordered_map>
+#include <string>
+
+/*
+ Used for handing MIME types
+ Multipurpose Internet Mail Extensions indicates the nature and format of a document
+ Parsing extensions is non-trivial. There could be multiple dots, '.', not all referring
+ to part of the extension
+ */
+
+namespace fbw {
+std::unordered_map<std::string,std::string> MIME_csv_to_map(std::string filename);
+std::unordered_map<std::string,std::string> MIMES(std::string directory_name);
+std::string get_MIME(std::string extension);
+std::string extension_from_path(std::string path);
+
+} // namespace fbw
+
+#endif /* mimemap_hpp */
+
+
+
