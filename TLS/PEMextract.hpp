@@ -17,9 +17,9 @@
 
 namespace fbw {
 
-std::array<unsigned char,32> privkey_from_file(std::string filename);
+[[nodiscard]] std::array<unsigned char,32> privkey_from_file(std::string filename);
 
-std::vector<ustring> der_cert_from_file(std::string filename);
+[[nodiscard]] std::vector<ustring> der_cert_from_file(std::string filename);
 } //namespace fbw
 
 

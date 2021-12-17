@@ -48,22 +48,22 @@ class tls_connection : public fbw::connection_base {
     void client_heartbeat(const ustring& heartbeat_message);
     
     void handle_client_hello(const ustring& hello);
-    tls_record server_hello();
-    tls_record server_certificate();
-    tls_record server_key_exchange();
-    tls_record server_hello_done();
+    [[nodiscard]] tls_record server_hello();
+    [[nodiscard]] tls_record server_certificate();
+    [[nodiscard]] tls_record server_key_exchange();
+    [[nodiscard]] tls_record server_hello_done();
     void handle_client_key_exchange(const ustring& key_exchange);
     void client_handshake_finished(const ustring& ciphertext);
     void server_change_cipher_spec();
     void server_handshake_finished();
     
-    ustring expand_master(const std::array<unsigned char,48>& master,
+    [[nodiscard]] ustring expand_master(const std::array<unsigned char,48>& master,
                           const std::array<unsigned char,32>& server_random,
-                          const std::array<unsigned char,32>& client_random, size_t len);
-    std::array<uint8_t,48> make_master_secret(std::array<uint8_t,32> server_private,
+                          const std::array<unsigned char,32>& client_random, size_t len) const;
+    [[nodiscard]] std::array<uint8_t,48> make_master_secret(std::array<uint8_t,32> server_private,
                                               std::array<uint8_t,32> client_public,
                                               std::array<uint8_t,32> server_random,
-                                              std::array<uint8_t,32> client_random);
+                                              std::array<uint8_t,32> client_random) const;
     
     unsigned short cipher_choice(const ustring& s);
     

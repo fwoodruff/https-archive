@@ -65,11 +65,9 @@ private:
 
     connection_state activity;
     
-    bool read_buffer_empty() noexcept;
-    bool read_buffer_full() noexcept;
-    bool write_buffer_empty();
-
-    
+    [[nodiscard]] bool read_buffer_empty() noexcept;
+    [[nodiscard]] bool read_buffer_full() noexcept;
+    [[nodiscard]] bool write_buffer_empty() noexcept;
 
 public:
     ssize_t bytes_queued_for_write;

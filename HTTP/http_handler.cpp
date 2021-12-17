@@ -102,7 +102,7 @@ std::string file_to_http(const std::string& rootdir, std::string filename) {
         << "Content-Length: " << file_contents.size() << "\r\n"
         // << "Last-Modified: " << timestring(get_file_date(file.get())) << "\r\n"
         << "Server: FredPi/0.1 (Unix) (Raspbian/Linux)\r\n"
-        << "ETag: " << hexStr(digest.data(), digest.size()) << "\r\n"
+        << "ETag: " << bytes_to_hex_string(digest.data(), digest.size()) << "\r\n"
         << "\r\n"
         << file_contents;
     

@@ -28,7 +28,7 @@ class http_error : public std::runtime_error {
 /*
  A pretty timestamp for response headers
  */
-std::string timestring(time_t t);
+[[nodiscard]] std::string timestring(time_t t);
 /*
  Gets the date the file was created
  */
@@ -55,20 +55,20 @@ std::string extract(std::string& bytes, std::string delimiter);
  Content-Type, Content-Length etc.
  What value does this field take?
  */
-std::string get_argument(const std::string& header, std::string field);
+[[nodiscard]] std::string get_argument(const std::string& header, std::string field);
 /*
  This tokenises a request header e.g. {'GET', '/<filename>', "HTTP/1.1" }
  */
-std::vector<std::string> get_method(const std::string& header);
+[[nodiscard]] std::vector<std::string> get_method(const std::string& header);
 /*
  returns the length of the body or its closing delimiter depending on the encoding
  */
-std::pair<std::string, size_t> body_size(const std::string& header);
+[[nodiscard]] std::pair<std::string, size_t> body_size(const std::string& header);
 /*
  converts a contiguous range of bytes into a pretty hex string
  this is used in the eTag
  */
-std::string hexStr(const uint8_t* const data, int len);
+[[nodiscard]] std::string bytes_to_hex_string(const uint8_t* const data, int len);
 
 } // namespace fbw
 #endif /* http_header_hpp */

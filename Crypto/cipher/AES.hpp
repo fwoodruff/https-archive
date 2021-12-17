@@ -40,12 +40,12 @@ template<int B> using aeskey = typename roundkeys_t<B>::key;
 [[nodiscard]] roundkey<192> aes_key_schedule(const std::array<uint8_t,24>& AESkey) noexcept;
 [[nodiscard]] roundkey<256> aes_key_schedule(const std::array<uint8_t,32>& AESkey) noexcept;
 
-aes_block aes_encrypt(aes_block plaintext, const roundkey<128>& roundkeys) noexcept;
-aes_block aes_encrypt(aes_block plaintext, const roundkey<192>& roundkeys) noexcept;
-aes_block aes_encrypt(aes_block plaintext, const roundkey<256>& roundkeys) noexcept;
-aes_block aes_decrypt(aes_block ciphertext, const roundkey<128>& roundkeys) noexcept;
-aes_block aes_decrypt(aes_block ciphertext, const roundkey<192>& roundkeys) noexcept;
-aes_block aes_decrypt(aes_block ciphertext, const roundkey<256>& roundkeys) noexcept;
+[[nodiscard]] aes_block aes_encrypt(aes_block plaintext, const roundkey<128>& roundkeys) noexcept;
+[[nodiscard]] aes_block aes_encrypt(aes_block plaintext, const roundkey<192>& roundkeys) noexcept;
+[[nodiscard]] aes_block aes_encrypt(aes_block plaintext, const roundkey<256>& roundkeys) noexcept;
+[[nodiscard]] aes_block aes_decrypt(aes_block ciphertext, const roundkey<128>& roundkeys) noexcept;
+[[nodiscard]] aes_block aes_decrypt(aes_block ciphertext, const roundkey<192>& roundkeys) noexcept;
+[[nodiscard]] aes_block aes_decrypt(aes_block ciphertext, const roundkey<256>& roundkeys) noexcept;
 
 } //fbw
 

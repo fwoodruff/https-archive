@@ -511,7 +511,7 @@ void tls_connection::client_heartbeat(const ustring& heartbeat_message) {
 std::array<uint8_t,48> tls_connection::make_master_secret(std::array<uint8_t,32> server_private,
                                                 std::array<uint8_t,32> client_public,
                                                 std::array<uint8_t,32> server_random,
-                                                std::array<uint8_t,32> client_random) {
+                                                std::array<uint8_t,32> client_random) const {
     std::reverse(server_private.begin(), server_private.end());
     std::reverse(client_public.begin(), client_public.end());
     auto premaster_secret = fbw::curve25519::multiply(server_private, client_public);
@@ -565,7 +565,7 @@ unsigned short tls_connection::cipher_choice(const ustring& s) {
 
 ustring tls_connection::expand_master(const std::array<unsigned char,48>& master,
                           const std::array<unsigned char,32>& server_random,
-                          const std::array<unsigned char,32>& client_random, size_t len) {
+                          const std::array<unsigned char,32>& client_random, size_t len) const {
 
     ustring output;
     const std::string seed = "key expansion";

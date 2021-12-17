@@ -56,19 +56,11 @@ time_t get_file_date(FILE* file) {
 
 }*/
 
-/*
- not currently used and not portable
- safe to delete
- */
-bool file_exists (const std::string& name) {
-  struct stat buffer;
-  return (stat (name.c_str(), &buffer) == 0);
-}
 
 /*
- hexdump
+ hexdump used in eTag
  */
-std::string hexStr(const uint8_t* const data, int len) {
+std::string bytes_to_hex_string(const uint8_t* const data, int len) {
     std::ostringstream ss;
     for(int i = 0; i < len; ++i) {
         ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(data[i]);

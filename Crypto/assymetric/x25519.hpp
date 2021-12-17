@@ -12,20 +12,13 @@
 
 // get secret
 namespace fbw::curve25519 {
-    std::array<unsigned char,32>
+[[nodiscard]] std::array<unsigned char,32>
     multiply(const std::array<unsigned char,32>& num,
-                                  const std::array<unsigned char,32>& pnt);
+                                  const std::array<unsigned char,32>& pnt) noexcept;
     // make key pair
-    std::array<unsigned char,32>
-    base_multiply(const std::array<unsigned char,32>& num);
+[[nodiscard]] std::array<unsigned char,32>
+    base_multiply(const std::array<unsigned char,32>& num) noexcept;
 
-
-    /*
-    std::array<unsigned char, 64>
-    ECDSA(const std::array<unsigned char,32>& ran,
-          const std::array<unsigned char,32>& dig,
-          const std::array<unsigned char,32>& priv);
-     */
 }
 
 #endif /* curve25519_hpp */

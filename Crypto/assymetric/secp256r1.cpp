@@ -19,7 +19,6 @@
 
 namespace fbw::secp256r1  {
 
-
 using namespace std::literals;
 
 struct affine_point256 {

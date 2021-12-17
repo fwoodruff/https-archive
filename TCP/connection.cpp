@@ -144,7 +144,8 @@ bool connection_base::read_buffer_empty() noexcept {
 bool connection_base::read_buffer_full() noexcept {
     return read_buffer_end == read_buffer.size();
 }
-bool connection_base::write_buffer_empty() {
+
+bool connection_base::write_buffer_empty() noexcept {
     return write_buffer.empty();
 }
 
