@@ -9,6 +9,8 @@
 #include "cppsocket.hpp"
 #include "server.hpp"
 #include "global.hpp"
+#include "HTTP.hpp"
+#include "TLS.hpp"
 
 #include <fcntl.h> // for F_SETFL, O_NONBLOCK
 #include <poll.h>
@@ -93,10 +95,21 @@ server_socket get_listener_socket(std::string service) {
  The ctor argument is the data stream handler
  The service is used to infer the correct port number
  */
-server::server(std::function<std::unique_ptr<connection_base>()> ctor, std::string service) : m_ctor(ctor) {
+server::server(std::string service) {
     m_sock = get_listener_socket(service.c_str());
+    
+    
+
     m_poller.add_fd(m_sock, connections.end(), true, false);
-    m_sock_can_accept = true;
+    
+    m_service = service;
+    
+    
+    
+    if(! (service == "http" or service == "https") ) {
+        throw std::logic_error("Unsupported service");
+    }
+    
     // interthread/intersocket, need a way for server to initiate message.
     // server-wide pipe
     // write_more and await_pipe maps, to 'add' those events to active.
@@ -122,13 +135,14 @@ server::server(std::function<std::unique_ptr<connection_base>()> ctor, std::stri
 void server::serve_some() {
     std::cout << "num connections: " << connections.size() << std::endl;
     const auto loop_time = steady_clock::now();
-    const bool sockaccept = connections.size() < MAX_SOCKETS - 11;
-    if(m_sock_can_accept != sockaccept) {
-        m_poller.mod_fd(m_sock, connections.end(), sockaccept, false);
-        m_sock_can_accept = sockaccept;
-    }
+    bool can_accept = connections.size() < MAX_SOCKETS - 11;
+    m_poller.mod_fd(m_sock, connections.end(), can_accept, false);
+    
+    
+    
+    
     const auto events = m_poller.get_events(!connections.empty());
-    clist active;
+    
     for (const auto& event : events) {
         if(event.node == connections.end()) {
             try {
@@ -136,56 +150,16 @@ void server::serve_some() {
             } catch(std::system_error e) {
                 std::cerr << e.what() << std::endl;
             }
-        } else {
-            clist x = handle_event(event, loop_time);
-            active.splice(begin(active), x);
+        }  else {
+            if((*event.node)->handle_connection(event, loop_time)) {
+                connections.erase(event.node);
+            }
         }
     }
-    const auto sentinel_stale = find_if_not(rbegin(connections), rend(connections),
+    const auto sentinel_stale = find_if_not(connections.crbegin(), connections.crend(),
                                    [&](const auto& elem){
         return loop_time - elem->m_time_set > 5s; });
-    
-    const auto sentinel_close = partition(begin(active), end(active),
-                          [](const auto& client){
-        if(client->activity == connection_state::live) {
-            client->handle_connection();
-        }
-        return client->activity != connection_state::closed;
-    });
-    
-    for(auto cli = begin(active); cli != sentinel_close; cli++) {
-        assert((*cli)->activity != connection_state::closed);
-        auto rs = !(*cli)->read_buffer_full() and ((*cli)->activity == connection_state::live);
-        auto ws = !(*cli)->write_buffer_empty();
-        if(rs != (*cli)->old_read_state or ws != (*cli)->old_write_state) {
-            m_poller.mod_fd((*cli)->m_socket, cli, rs, ws);
-            (*cli)->old_read_state = rs;
-            (*cli)->old_write_state = ws;
-        }
-    }
-    connections.splice(connections.begin(), active, active.begin(), sentinel_close);
-    connections.erase(sentinel_stale.base(), end(connections));
-}
-
-/*
- Handle I/O for polled sockets
- */
-server::clist server::handle_event(fpollfd event, tp loop_time) noexcept {
-    clist single_node_holder;
-    single_node_holder.splice(begin(single_node_holder), connections, event.node, next(event.node));
-    const auto& client = *event.node;
-    try {
-        if(event.read) {
-            client->read_some();
-        }
-        if(event.write) {
-            client->write_some();
-        }
-    } catch(std::runtime_error e) {
-        client->activity = connection_state::closed;
-    }
-    client->m_time_set = loop_time;
-    return single_node_holder;
+    connections.erase(sentinel_stale.base(), connections.end());
 }
 
 /*
@@ -193,10 +167,20 @@ server::clist server::handle_event(fpollfd event, tp loop_time) noexcept {
  */
 void server::accept_connection(tp loop_time) {
     clist single_node_holder;
-    single_node_holder.emplace_back(m_ctor());
-    const auto& node = single_node_holder.back();
-    node->m_time_set = loop_time;
     
+    single_node_holder.push_back( std::make_unique<connection>() );
+    const auto& node = single_node_holder.back();
+
+    if(m_service == "http") {
+        node->push_receiver(std::make_unique<HTTP>());
+    } else if(m_service == "https") {
+        node->push_receiver(std::make_unique<HTTP>());
+        node->push_receiver(std::make_unique<TLS>());
+    } else {
+        assert(false);
+    }
+
+    node->m_time_set = loop_time;
     struct sockaddr_storage cli_addr;
     socklen_t sin_len = sizeof(cli_addr);
     node->m_socket = m_sock.accept((sockaddr *) &cli_addr, &sin_len);
@@ -205,7 +189,7 @@ void server::accept_connection(tp loop_time) {
     m_poller.add_fd(node->m_socket, single_node_holder.begin(), true, false);
     node->context = &m_poller;
     
-    // keep new connections on the stack until fully initialised
+    // keep new connections in this scope until fully initialised
     connections.splice(connections.begin(), single_node_holder);
 }
 

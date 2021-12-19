@@ -12,6 +12,8 @@
 #include "polling.hpp"
 #include "connection.hpp"
 #include "cppsocket.hpp"
+#include "HTTP.hpp"
+
 
 #include <memory>
 #include <string>
@@ -33,19 +35,20 @@ using tp = time_point<steady_clock,nanoseconds>;
 server_socket get_listener_socket(std::string service);
 
 class server {
-    using clist = std::list<std::unique_ptr<connection_base>>;
+    using clist = std::list<std::unique_ptr<connection>>;
     static constexpr int max_listen = 10;
     poll_context m_poller;
     clist connections;
     server_socket m_sock;
-    bool m_sock_can_accept;
-    
-    std::function<std::unique_ptr<connection_base>()> m_ctor;
-    void accept_connection(tp);
-    clist handle_event(fpollfd, tp) noexcept;
 
+    void accept_connection(tp);
+    void handle_event(fpollfd, tp) noexcept;
+    
+    std::string m_service;
+
+    
 public:
-    server( std::function<std::unique_ptr<connection_base>()> ctor, std::string service = "http");
+    server(std::string service = "http");
     ~server(); // on windows startup/shutdown
     void serve_some();
     

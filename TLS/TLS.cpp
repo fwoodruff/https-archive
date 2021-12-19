@@ -27,7 +27,7 @@
  implement some post-quantum ciphers
 */
 
-#include "tls_protocol.hpp"
+#include "TLS.hpp"
 
 #include "x25519.hpp"
 #include "secure_hash.hpp"
@@ -56,33 +56,36 @@ namespace fbw {
 std::optional<tls_record> try_extract_record(ustring& input);
 
 
-
 // handler
-void tls_connection::handle_connection() noexcept {
+status_message TLS::handle(ustring input) noexcept {
+    m_input.append(input);
+    // for now concatenate a bunch of records, later can implement sending them separately
+    // refactor as a generator later
+    status_message output;
+    output.m_status = status::read_only;
     
-    read_bytes(input);
-    // up to some maximum number of bytes
     try {
         while(true) {
-            auto record = try_extract_record(input);
+            auto record = try_extract_record(m_input);
             if(!record) {
-                return;
+                break;
             }
-            handle_record(std::move(*record));
+            handle_record(std::move(*record), output);
         }
     } catch(ssl_error e) {
         std::cerr << e.what() << std::endl;
-        send_tcp_kill_signal();
+        return {{}, status::closed };
     } catch(std::out_of_range e) {
         std::cerr << e.what() << std::endl;
-        send_tcp_kill_signal();
+        return {{}, status::closed };
     } catch(ssl_close_signal s) {
         std::cout << "TLS NOTIFY CLOSE" << std::endl;
-        send_tcp_close_signal();
+        output.m_status = status::closing;
     }
+    return output;
 }
 
-bool tls_connection::handle_record(tls_record record) {
+void TLS::handle_record(tls_record record, status_message& output) {
     if (record.major_version != 3) {
         throw ssl_error("unsupported version"); // learn ssl errors
     }
@@ -100,18 +103,16 @@ bool tls_connection::handle_record(tls_record record) {
                 client_change_cipher_spec(std::move(record.contents));
                 break;
             case static_cast<uint8_t>(ContentType::Alert):
-                if(client_alert(std::move(record.contents))) {
-                    return true;
-                }
+                client_alert(std::move(record.contents), output);
                 break;
             case static_cast<uint8_t>(ContentType::Handshake):
-                client_handshake(std::move(record.contents));
+                client_handshake(std::move(record.contents), output);
                 break;
             case static_cast<uint8_t>(ContentType::Application):
-                client_application_data(std::move(record.contents));
+                client_application_data(std::move(record.contents), output);
                 break;
             case static_cast<uint8_t>(ContentType::Heartbeat):
-                client_heartbeat(std::move(record.contents));
+                client_heartbeat(std::move(record.contents), output);
                 break;
             default:
                 throw ssl_error("bad record type");
@@ -120,22 +121,20 @@ bool tls_connection::handle_record(tls_record record) {
     } catch (std::out_of_range e) {
         throw ssl_error("bad sublength");
     }
-    return false;
 }
  
-void tls_connection::client_handshake(ustring handshake_record) {
-
+void TLS::client_handshake(ustring handshake_record, status_message& output) {
     switch (handshake_record.at(0)) {
         case static_cast<uint8_t>(HandshakeType::hello_request):
             throw ssl_error("hello_request not supported");
         case static_cast<uint8_t>(HandshakeType::client_hello):
-            handle_client_hello(std::move(handshake_record));
+            handle_client_hello(std::move(handshake_record), output);
             break;
         case static_cast<uint8_t>(HandshakeType::client_key_exchange):
             handle_client_key_exchange(std::move(handshake_record));
             break;
         case static_cast<uint8_t>(HandshakeType::finished):
-            client_handshake_finished(std::move(handshake_record));
+            client_handshake_finished(std::move(handshake_record), output);
             break;
         default:
             throw ssl_error("unsupported handshake record type");
@@ -144,7 +143,7 @@ void tls_connection::client_handshake(ustring handshake_record) {
 }
 
 
-void tls_connection::handle_client_hello(const ustring& hello) {
+void TLS::handle_client_hello(const ustring& hello, status_message& output) {
     // handshake header
     assert(hello.at(0) == 1);
 
@@ -155,7 +154,7 @@ void tls_connection::handle_client_hello(const ustring& hello) {
     }
     // client version
     if ( hello.at(4) != 3 or hello.at(5) != 3 ) {
-        throw ssl_error("unsupported version");
+        throw ssl_error("unsupported version handshake");
     }
     // client random
     std::copy(&hello.at(6), &hello.at(38), m_client_random.begin());
@@ -198,13 +197,13 @@ void tls_connection::handle_client_hello(const ustring& hello) {
 
     handshake_hasher->update(hello.data(), hello.size());
     
-    send_bytes(server_hello().serialise());
-    send_bytes(server_certificate().serialise());
-    send_bytes(server_key_exchange().serialise());
-    send_bytes(server_hello_done().serialise());
+    output.m_response.append(server_hello().serialise());
+    output.m_response.append(server_certificate().serialise());
+    output.m_response.append(server_key_exchange().serialise());
+    output.m_response.append(server_hello_done().serialise());
 }
 
-tls_record tls_connection::server_hello() {
+tls_record TLS::server_hello() {
     tls_record hello_record;
     hello_record.type = static_cast<uint8_t>(ContentType::Handshake);
     hello_record.major_version = 3;
@@ -227,7 +226,7 @@ tls_record tls_connection::server_hello() {
     return hello_record;
 }
 
-tls_record tls_connection::server_certificate(){
+tls_record TLS::server_certificate(){
     tls_record certificate_record;
     certificate_record.type = static_cast<uint8_t>(ContentType::Handshake);
     certificate_record.major_version = 3;
@@ -251,7 +250,7 @@ tls_record tls_connection::server_certificate(){
     return certificate_record;
 }
 
-tls_record tls_connection::server_key_exchange(){
+tls_record TLS::server_key_exchange(){
     randomgen.randgen(server_private_key_ephem.begin(), server_private_key_ephem.size());
     std::array<uint8_t,32> privrev;
     std::reverse_copy(server_private_key_ephem.begin(), server_private_key_ephem.end(), privrev.begin());
@@ -302,7 +301,7 @@ tls_record tls_connection::server_key_exchange(){
     return record;
 }
 
-tls_record tls_connection::server_hello_done() {
+tls_record TLS::server_hello_done() {
     tls_record record;
     record.type = static_cast<uint8_t>(ContentType::Handshake);
     record.major_version = 3;
@@ -312,7 +311,7 @@ tls_record tls_connection::server_hello_done() {
     return record;
 }
 
-void tls_connection::handle_client_key_exchange(const ustring& key_exchange) {
+void TLS::handle_client_key_exchange(const ustring& key_exchange) {
     assert(key_exchange[0] == static_cast<uint8_t>(HandshakeType::client_key_exchange));
     
     const size_t len = safe_asval(key_exchange,1,3);
@@ -327,7 +326,7 @@ void tls_connection::handle_client_key_exchange(const ustring& key_exchange) {
     handshake_hasher->update(key_exchange.data(), key_exchange.size());
 }
 
-void tls_connection::client_change_cipher_spec(const ustring& change_message) {
+void TLS::client_change_cipher_spec(const ustring& change_message) {
     if(change_message.size() != 1 and change_message.at(0) != static_cast<uint8_t>(ChangeCipherSpec::change_cipher_spec)) {
         throw ssl_error("bad cipher spec");
     }
@@ -335,7 +334,7 @@ void tls_connection::client_change_cipher_spec(const ustring& change_message) {
 }
 
 
-void tls_connection::client_handshake_finished(const ustring& finish) {
+void TLS::client_handshake_finished(const ustring& finish, status_message& output) {
 
     assert(finish[0] == static_cast<uint8_t>(HandshakeType::finished));
     const size_t len = safe_asval(finish,1,3);
@@ -372,17 +371,17 @@ void tls_connection::client_handshake_finished(const ustring& finish) {
     }
 
     handshake_hasher->update(finish.data(), finish.size());
-    server_change_cipher_spec();
-    server_handshake_finished();
+    server_change_cipher_spec(output);
+    server_handshake_finished(output);
 }
 
-void tls_connection::server_change_cipher_spec() {
+void TLS::server_change_cipher_spec(status_message& output) {
     ustring record ({static_cast<uint8_t>(ContentType::ChangeCipherSpec),
         0x03, 0x03, 0x00, 0x01, static_cast<uint8_t>(ChangeCipherSpec::change_cipher_spec)});
-    send_bytes(std::move(record));
+    output.m_response.append(record);
 }
 
-void tls_connection::server_handshake_finished() {
+void TLS::server_handshake_finished(status_message& output) {
     tls_record out;
     out.type = static_cast<uint8_t>(ContentType::Handshake);
     out.major_version = 3;
@@ -418,15 +417,32 @@ void tls_connection::server_handshake_finished() {
     } else {
         throw ssl_error("Unwilling to respond on unencrypted channel");
     }
-    send_bytes(out.serialise());
+    output.m_response.append(out.serialise());
 }
 
-void tls_connection::client_application_data(const ustring& application_data) {
-    incoming_application_data.append(application_data);
-    handle_session_data();
+void TLS::client_application_data(const ustring& application_data, status_message& output) {
+    auto app_out = next->handle(application_data);
+    output.m_status = app_out.m_status;
+    int record_size = 1;
+    for(size_t i = 0; i < app_out.m_response.size(); i += record_size) {
+        // break up the http byte stream randomly
+        record_size = std::clamp(256, int(randomgen.randgen64() % (7*app_out.m_response.size()/4)), 10000);
+        
+        tls_record out;
+        out.type = static_cast<uint8_t>(ContentType::Application);
+        out.major_version = 3;
+        out.minor_version = 3;
+        out.contents.append(&app_out.m_response[i], &app_out.m_response[std::max(i, app_out.m_response.size())]);
+        if(handshake_done) {
+            out = cipher_context->encrypt(std::move(out));
+        } else {
+            throw ssl_error("Unwilling to respond on unencrypted channel");
+        }
+        output.m_response.append(out.serialise());
+    }
 }
 
-void tls_connection::tls_notify_close() {
+void TLS::tls_notify_close(status_message& output) {
     tls_record close_record;
     close_record.type = static_cast<uint8_t>(ContentType::Alert);
     close_record.major_version = 3;
@@ -435,38 +451,13 @@ void tls_connection::tls_notify_close() {
     if(handshake_done) {
         close_record = cipher_context->encrypt(std::move(close_record));
     }
-    send_bytes(close_record.serialise());
-    throw ssl_close_signal("closing");
-}
-
-void tls_connection::read_app(std::string& chars) {
-    chars.append(incoming_application_data.begin(), incoming_application_data.end());
-    incoming_application_data.clear();
-}
-
-void tls_connection::write_app(const std::string& chars) {
-    int record_size = 1;
-    for(size_t i = 0; i < chars.size(); i+= record_size) {
-        // break up the http byte stream randomly
-        record_size = std::clamp(256, int(randomgen.randgen64() % (7*chars.size()/4)), 10000);
-        
-        
-        tls_record out;
-        out.type = static_cast<uint8_t>(ContentType::Application);
-        out.major_version = 3;
-        out.minor_version = 3;
-        out.contents.append(&chars[i], &chars[std::max(i, chars.size())]);
-        if(handshake_done) {
-            out = cipher_context->encrypt(std::move(out));
-        } else {
-            throw ssl_error("Unwilling to respond on unencrypted channel");
-        }
-        send_bytes(out.serialise());
-    }
+    output.m_response.append(close_record.serialise());
+    output.m_status = status::closing;
 }
 
 
-bool tls_connection::client_alert(const ustring& alert_message) {
+
+bool TLS::client_alert(const ustring& alert_message, status_message& output) {
     if(alert_message.size() != 2) {
         throw ssl_error("bad alert");
     }
@@ -489,7 +480,7 @@ bool tls_connection::client_alert(const ustring& alert_message) {
 }
 
 
-void tls_connection::client_heartbeat(const ustring& heartbeat_message) {
+void TLS::client_heartbeat(const ustring& heartbeat_message, status_message& output) {
     if(heartbeat_message.size() != 1 or heartbeat_message[0] != 0x01) {
         throw ssl_error("bad heartbeat");
     }
@@ -503,12 +494,11 @@ void tls_connection::client_heartbeat(const ustring& heartbeat_message) {
     if(handshake_done) {
         heartbeat_record = cipher_context->encrypt(std::move(heartbeat_record));
     }
-
-    send_bytes(heartbeat_record.serialise());
+    output.m_response.append(heartbeat_record.serialise());
 }
 
 
-std::array<uint8_t,48> tls_connection::make_master_secret(std::array<uint8_t,32> server_private,
+std::array<uint8_t,48> TLS::make_master_secret(std::array<uint8_t,32> server_private,
                                                 std::array<uint8_t,32> client_public,
                                                 std::array<uint8_t,32> server_random,
                                                 std::array<uint8_t,32> client_random) const {
@@ -550,20 +540,21 @@ std::array<uint8_t,48> tls_connection::make_master_secret(std::array<uint8_t,32>
 }
 
 
-unsigned short tls_connection::cipher_choice(const ustring& s) {
-    for(size_t i = 0; i < s.size(); i+=2) {
+unsigned short TLS::cipher_choice(const ustring& s) {
+    for(size_t i = 0; i < s.size(); i += 2) {
         uint16_t x = safe_asval(s, i, 2);
         if (x == static_cast<uint16_t>(cipher_suites::TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA)) {
             cipher_context = std::make_unique<aes::AES_128_CBC_context>();
             hasher_factory = std::make_unique<sha256>();
             handshake_hasher = hasher_factory->clone();
+            // cloneable should maybe be an interface class
             return x;
         }
     }
     throw ssl_error("no supported ciphers");
 }
 
-ustring tls_connection::expand_master(const std::array<unsigned char,48>& master,
+ustring TLS::expand_master(const std::array<unsigned char,48>& master,
                           const std::array<unsigned char,32>& server_random,
                           const std::array<unsigned char,32>& client_random, size_t len) const {
 

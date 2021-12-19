@@ -24,14 +24,9 @@
 
 namespace fbw {
 
-using node_ptr = std::list<std::unique_ptr<connection_base>>::iterator;
+class connection;
 
 
-struct fpollfd {
-    node_ptr node;
-    bool read;
-    bool write;
-};
 
 
 class poll_context {

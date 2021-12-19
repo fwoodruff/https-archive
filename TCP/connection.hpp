@@ -15,6 +15,7 @@
 #include "connection.hpp"
 #include "global.hpp"
 #include "receiver.hpp"
+#include "polling.hpp"
 
 
 #include <unistd.h>
@@ -29,6 +30,7 @@
 #include <queue>
 #include <chrono>
 #include <list>
+#include <memory>
 
 
 
@@ -36,7 +38,6 @@
 namespace fbw {
 
 
-enum class connection_state : uint8_t { live, closing, closed };
 
 using namespace std::chrono;
 
@@ -45,56 +46,37 @@ class poll_context;
 /*
  Interface between TCP and TLS layers
  */
-class connection_base {
+class connection {
 private:
-    std::vector<uint8_t> read_buffer;
-    ssize_t read_buffer_end = 0;
-    std::queue<ustring> write_buffer;
+    ustring write_buffer;
     size_t vec_start = 0;
     time_point<steady_clock> m_time_set;
-    bool old_read_state;
-    bool old_write_state;
 
-    void read_some();
-    void write_some();
-    
     poll_context* context = nullptr;
     client_socket m_socket;
     
     friend class server;
 
-    connection_state activity;
+    status activity;
     
-    [[nodiscard]] bool read_buffer_empty() noexcept;
-    [[nodiscard]] bool read_buffer_full() noexcept;
-    [[nodiscard]] bool write_buffer_empty() noexcept;
+    ustring receive_bytes_from_network();
+    ssize_t queue_bytes_for_write(ustring bytes);
+    void send_bytes_over_network();
 
 public:
-    ssize_t bytes_queued_for_write;
-    connection_base();
-    virtual ~connection_base();
-    connection_base(const connection_base& other) = delete;
-    connection_base& operator=(const connection_base& other) = delete;
+
+    connection();
     
-    void read_bytes(ustring&);
-    ssize_t send_bytes(ustring bytes);
-    void send_tcp_close_signal();
-    void send_tcp_kill_signal();
-    // void send_write_more();
-    // need a map member
+    void push_receiver(std::unique_ptr<receiver>&& r);
     
-    virtual void handle_connection() noexcept = 0;
-    std::unique_ptr<receiver> transport_later;
-    
-    /*
-     std::shared_ptr<message_vertex> base;
-     
-     */
-    
-    
-    
-    
-    
+    ~connection();
+    connection(const connection& other) = delete;
+    connection& operator=(const connection& other) = delete;
+
+    // returns true if the connection finished
+    bool handle_connection(fpollfd, time_point<steady_clock,nanoseconds>) noexcept;
+    std::unique_ptr<receiver> primary_receiver;
+
 };
 
 } // namespace fbw

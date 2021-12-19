@@ -15,7 +15,7 @@
 namespace fbw {
 
 enum class status : unsigned {
-    read_only, read_write, read_dormant, dormant, dead
+    read_only, always_poll, /*dormant,*/ closing, closed
     /*
      read_only means event loop should await data received from client
      read_write means poll if either available
@@ -32,9 +32,12 @@ struct status_message {
 
 class receiver {
 public:
-    virtual status_message handle(ustring) = 0;
+    virtual status_message handle(ustring) noexcept =  0;
     virtual ~receiver() noexcept = default;
+    std::unique_ptr<receiver> next = nullptr;
 };
+
+
 
 
 }

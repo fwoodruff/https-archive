@@ -6,7 +6,6 @@
 
 
 #include "server.hpp"
-#include "https_connection.hpp"
 
 
 #include <new>
@@ -43,7 +42,7 @@ int main() {
 
     try {
         
-        fbw::server webserver { fbw::https_connection::ctor_my,"https" };
+        fbw::server webserver { "https" };
         while(true) {
             webserver.serve_some();
         }

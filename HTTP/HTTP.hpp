@@ -8,7 +8,7 @@
 #ifndef https_connection_hpp
 #define https_connection_hpp
 
-#include "tls_protocol.hpp"
+#include "receiver.hpp"
 
 #include <string>
 
@@ -17,15 +17,17 @@ namespace fbw {
 /*
  Handles HTTP streams
  */
-class https_connection final : public tls_connection {
+
+// rename to just http
+class HTTP final : public receiver {
     static constexpr long max_bytes_queued = 1000000;
     
     std::string input;
     std::string header;
-    void handle_session_data() final override;
-    
+
 public:
-    static std::unique_ptr<connection_base> ctor_my();
+    status_message handle(ustring) noexcept final override;
+
 };
 
 } // namespace fbw

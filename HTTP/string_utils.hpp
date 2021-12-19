@@ -8,6 +8,7 @@
 #ifndef http_header_hpp
 #define http_header_hpp
 
+#include "global.hpp"
 
 #include <string>
 #include <vector>
@@ -69,6 +70,8 @@ std::string extract(std::string& bytes, std::string delimiter);
  this is used in the eTag
  */
 [[nodiscard]] std::string bytes_to_hex_string(const uint8_t* const data, int len);
+
+
 
 } // namespace fbw
 #endif /* http_header_hpp */

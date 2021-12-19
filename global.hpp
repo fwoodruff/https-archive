@@ -29,6 +29,10 @@ extern const int timeoutms;
 extern const ssize_t BUFFER_SIZE;
 //extern std::fstream logout;
 
+
+
+
+
 using ustring = std::basic_string<uint8_t>;
 [[nodiscard]] inline uint64_t safe_asval(const ustring& s, size_t idx, size_t bytes) {
     uint64_t len = 0;
@@ -79,6 +83,20 @@ class ssl_error : public std::runtime_error {
 class ssl_close_signal : public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
+
+
+
+[[nodiscard]] inline ustring to_unsigned(std::string s) {
+    ustring out;
+    out.append(s.begin(), s.end());
+    return out;
+}
+
+[[nodiscard]] inline std::string to_signed(ustring s) {
+    std::string out;
+    out.append(s.begin(), s.end());
+    return out;
+}
 
 } // namespace fbw
 

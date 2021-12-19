@@ -17,6 +17,7 @@
 #include <vector>
 #include <cstddef>
 #include <iomanip>
+#include <memory>
 
 
 
@@ -26,13 +27,20 @@
 namespace fbw {
 
 // tidy this up with all arguments
-connection_base::connection_base() :
-    activity(connection_state::live), old_read_state(true), old_write_state(false) {
-        read_buffer.resize(BUFFER_SIZE);
+connection::connection() :
+activity(status::read_only), primary_receiver(nullptr) {
+        
+}
+
+void connection::push_receiver(std::unique_ptr<receiver>&& r) {
+    if(primary_receiver != nullptr) {
+        r->next = std::move(primary_receiver);
+    }
+    primary_receiver = std::move(r);
 }
 
 
-connection_base::~connection_base() {
+connection::~connection() {
     if(context != nullptr) {
         try {
             context->del_fd(m_socket);
@@ -42,112 +50,118 @@ connection_base::~connection_base() {
     }
 }
 
+
 // handle OOB
 
-void connection_base::read_some() {
-    if(activity != connection_state::live) {
-        return;
+
+void connection::send_bytes_over_network() {
+    switch(activity) {
+        case status::read_only:
+        case status::always_poll:
+        //case status::dormant:
+        case status::closing:
+            break;
+        case status::closed:
+            assert(false);
+            return;
     }
-    const auto remaining_buffer = read_buffer.size() - read_buffer_end;
-    if(remaining_buffer == 0) {
-        return;
-    }
-    assert(read_buffer_end < read_buffer.size());
-    assert(remaining_buffer != 0);
-    const auto bytes = m_socket.recv(&read_buffer[read_buffer_end], remaining_buffer, 0);
-    if (bytes == 0) {
-        activity = connection_state::closed;
+    
+    auto bytes = m_socket.send(write_buffer.data(), write_buffer.size(), 0);
+    if(bytes == write_buffer.size()) {
+        write_buffer.clear();
     } else {
-        read_buffer_end += bytes;
-        assert(bytes <= remaining_buffer);
-        assert(read_buffer_end <= read_buffer.size());
+        write_buffer = write_buffer.substr(bytes);
+    }
+    if(write_buffer.empty() and activity == status::closing) {
+        activity = status::closed;
     }
 }
 
-/*
- void write_more() {
- }
- 
- */
-
-void connection_base::write_some() {
-    if(activity == connection_state::closed) {
-        return;
+ustring connection::receive_bytes_from_network() {
+    ustring out;
+    out.resize(BUFFER_SIZE);
+    const auto bytes = m_socket.recv(out.data(), out.size(), 0);
+    if (bytes == 0) {
+        activity = status::closed;
+        throw std::runtime_error("closing connection");
     }
-    while(!write_buffer.empty()) {
-        const auto vec = write_buffer.front();
-        size_t bytes = 0;
-        [[maybe_unused]] bool passthrough = false;
-        if(vec.size() != 0) {
-            assert(vec.size() > vec_start); // check this
-            try {
-                bytes = m_socket.send(&vec[vec_start], vec.size()-vec_start, 0);
-            } catch (std::system_error e) {
-                if(e.code().value() == EWOULDBLOCK or e.code().value() == EAGAIN) {
-                    // polled sockets shouldn't block
-                    assert(passthrough == true);
-                    break;
-                } else {
-                    throw;
-                }
-            }
-            // this control flow requires some thought given the object lifetimes
-            bytes_queued_for_write -= bytes;
-            vec_start += bytes;
-            passthrough = true;
-        }
-        if(vec_start == vec.size()) {
-            vec_start = 0;
-            write_buffer.pop();
-        }
-    }
-    if(write_buffer_empty() and activity == connection_state::closing) {
-        activity = connection_state::closed;
-    }
-}
-
-void connection_base::send_tcp_close_signal() {
-    activity = write_buffer_empty() ? connection_state::closed : connection_state::closing;
-}
-
-void connection_base::send_tcp_kill_signal() {
-    activity = connection_state::closed;
-}
-
-void connection_base::read_bytes(ustring& vec) {
-    assert(activity == connection_state::live);
-    assert(read_buffer_end <= read_buffer.size());
     std::cout << "READ BYTES:\n";
-    for(int i = 0; i < read_buffer_end; i++) {
-        std::cout << std::hex << std::setw(2) << std::setfill('0') << int(read_buffer[i]);
+    for(int i = 0; i < bytes; i++) {
+        std::cout << std::hex << std::setw(2) << std::setfill('0') << int(out[i]);
     }
     std::cout << std::endl;
-    vec.append(&read_buffer[0], &read_buffer[read_buffer_end]);
-    read_buffer_end = 0;
+    out.resize(bytes);
+    return out;
 }
 
-ssize_t connection_base::send_bytes(ustring bytes) {
-    assert(activity != connection_state::closed);
+ssize_t connection::queue_bytes_for_write(ustring bytes) {
     std::cout << "SEND BYTES:\n";
     for(auto c : bytes) {
         std::cout << std::hex << std::setw(2) << std::setfill('0') << int(c);
     }
     std::cout << std::endl;
-    write_buffer.push(std::move(bytes));
-    bytes_queued_for_write += bytes.size();
-    return bytes_queued_for_write;
+    write_buffer.append(bytes);
+
+    return write_buffer.size();
 }
 
-bool connection_base::read_buffer_empty() noexcept {
-    return read_buffer_end == 0;
-}
-bool connection_base::read_buffer_full() noexcept {
-    return read_buffer_end == read_buffer.size();
+bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanoseconds> loop_time) noexcept {
+    try {
+        assert(primary_receiver != nullptr);
+        switch(activity) {
+            case status::read_only:
+            //case status::dormant:
+                if(event.read) {
+                    ustring out = receive_bytes_from_network();
+                    auto st_msg = primary_receiver->handle(out);
+                    activity = st_msg.m_status;
+                    write_buffer.append(st_msg.m_response);
+                }
+                if(event.write) {
+                    send_bytes_over_network();
+                }
+                break;
+            case status::always_poll:
+                if(write_buffer.empty()) {
+                    if(event.read) {
+                        ustring out = receive_bytes_from_network();
+                        
+                        auto st_msg = primary_receiver->handle(out);
+                        activity = st_msg.m_status;
+                    }
+                }
+                if(event.write) {
+                    send_bytes_over_network();
+                }
+                break;
+            case status::closing:
+                if(event.write) {
+                    send_bytes_over_network();
+                }
+                break;
+            case status::closed:
+                assert(false);
+                
+        }
+    } catch(std::runtime_error e) {
+        activity = status::closed;
+    }
+
+    m_time_set = loop_time;
+    
+    bool poll_for_read =  (activity ==  status::read_only) or
+                          (activity == status::always_poll and write_buffer.empty());
+    bool poll_for_write = (!write_buffer.empty() and activity != status::closed) or
+                          (activity == status::always_poll and write_buffer.empty());
+
+    
+    context->mod_fd(m_socket, event.node, poll_for_read, poll_for_write);
+    return activity == status::closed;
 }
 
-bool connection_base::write_buffer_empty() noexcept {
-    return write_buffer.empty();
-}
+
+
+
 
 
 

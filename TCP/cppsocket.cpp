@@ -143,19 +143,14 @@ std::pair<std::string,std::string> client_socket::cli_socketinfo() {
     char service[32];
     
     sin_len = sizeof cli_addr;
-    
 
     getpeername(m_fd, (struct sockaddr*)&cli_addr, &sin_len);
-    
-    
 
     int code = ::getnameinfo((const struct sockaddr *)&cli_addr,
                              sin_len, host, sizeof(host), service, sizeof service, 0);
     if(code != 0) {
         throw std::runtime_error(std::string(gai_strerror(code)));
     }
-
-
 
     if (cli_addr.ss_family == AF_INET) {
         struct sockaddr_in *s = (struct sockaddr_in *)&cli_addr;

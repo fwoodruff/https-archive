@@ -19,9 +19,9 @@
 
 namespace fbw {
 
-class tls_connection : public fbw::connection_base {
+class TLS : public receiver {
     
-    ustring input;
+    ustring m_input;
     std::array<uint8_t,32> m_client_random;
     std::array<uint8_t,32> m_server_random;
     // session ID
@@ -41,21 +41,21 @@ class tls_connection : public fbw::connection_base {
     std::unique_ptr<const hash_base> hasher_factory;
     
     
-    bool handle_record(tls_record record);
-    void client_handshake(ustring handshake_message);
+    void handle_record(tls_record record, status_message& output);
+    void client_handshake(ustring handshake_message, status_message& output);
     void client_change_cipher_spec(const ustring& change_message);
-    bool client_alert(const ustring& alert_message);
-    void client_heartbeat(const ustring& heartbeat_message);
+    bool client_alert(const ustring& alert_message, status_message& output);
+    void client_heartbeat(const ustring& heartbeat_message, status_message& output);
     
-    void handle_client_hello(const ustring& hello);
+    void handle_client_hello(const ustring& hello, status_message& output);
     [[nodiscard]] tls_record server_hello();
     [[nodiscard]] tls_record server_certificate();
     [[nodiscard]] tls_record server_key_exchange();
     [[nodiscard]] tls_record server_hello_done();
     void handle_client_key_exchange(const ustring& key_exchange);
-    void client_handshake_finished(const ustring& ciphertext);
-    void server_change_cipher_spec();
-    void server_handshake_finished();
+    void client_handshake_finished(const ustring& ciphertext, status_message& output);
+    void server_change_cipher_spec(status_message& output);
+    void server_handshake_finished(status_message& output);
     
     [[nodiscard]] ustring expand_master(const std::array<unsigned char,48>& master,
                           const std::array<unsigned char,32>& server_random,
@@ -67,22 +67,12 @@ class tls_connection : public fbw::connection_base {
     
     unsigned short cipher_choice(const ustring& s);
     
-    void client_application_data(const ustring& data);
-    
-    
-    
-    //void server_application_data(const ustring& data_stream);
+    void client_application_data(const ustring& data, status_message& output);
 
-    ustring incoming_application_data;
+    void tls_notify_close(status_message& output); // keep this?
 public:
-    //static std::unique_ptr<fbw::connection_base> ctor_my();
-    void handle_connection() noexcept final override;
+    status_message handle(ustring) noexcept override;
     
-    void  read_app(std::string& chars);
-    void write_app(const std::string& chars);
-    void tls_notify_close();
-    
-    virtual void handle_session_data() = 0;
 };
 
 

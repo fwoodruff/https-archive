@@ -11,15 +11,24 @@
 #include <sys/socket.h>
 #include <sys/types.h>
 #include <system_error>
+#include <unistd.h>
 
 #include <memory>
-
+#include <list>
 
 
 
 namespace fbw{
 
+class connection;
 
+using node_ptr = std::list<std::unique_ptr<connection>>::iterator;
+
+struct fpollfd {
+    node_ptr node;
+    bool read;
+    bool write;
+};
 
 using fd_t = int;
 
@@ -81,6 +90,26 @@ public:
     std::string serv_socketinfo();
     friend class std::hash<server_socket>;
 };
+
+class read_pipe : public cppsocket  {
+public:
+    read_pipe(int fd) : cppsocket(fd) {}
+};
+
+class write_pipe : public cppsocket  {
+public:
+    write_pipe(int fd) : cppsocket(fd) {}
+};
+
+inline std::pair<read_pipe, write_pipe> make_pipe() {
+    int pipefd[2];
+    int err = ::pipe(pipefd);
+    if(err == -1) {
+        throw std::system_error(errno, std::generic_category());
+    }
+    return { read_pipe(pipefd[0]), write_pipe(pipefd[1])};
+}
+
 
 
 } // namespace fbw
