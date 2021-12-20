@@ -85,21 +85,25 @@ ustring connection::receive_bytes_from_network() {
         activity = status::closed;
         throw std::runtime_error("closing connection");
     }
+    /*
     std::cout << "READ BYTES:\n";
     for(int i = 0; i < bytes; i++) {
         std::cout << std::hex << std::setw(2) << std::setfill('0') << int(out[i]);
     }
     std::cout << std::endl;
+     */
     out.resize(bytes);
     return out;
 }
 
 ssize_t connection::queue_bytes_for_write(ustring bytes) {
+    /*
     std::cout << "SEND BYTES:\n";
     for(auto c : bytes) {
         std::cout << std::hex << std::setw(2) << std::setfill('0') << int(c);
     }
     std::cout << std::endl;
+     */
     write_buffer.append(bytes);
 
     return write_buffer.size();
