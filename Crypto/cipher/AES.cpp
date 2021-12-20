@@ -13,6 +13,7 @@
 #include <algorithm>
 #include <iostream>
 #include <iomanip>
+#include <vector>
 
 /*
  This performs AES encryption and decryption on 16 byte blocks of data, using 128 bit, 192 bit and 256 bit keys
@@ -22,8 +23,7 @@ namespace fbw::aes {
 
 
 constexpr int Nb = 4;
-template<int BITS> constexpr int Nk = BITS/32;
-template<int BITS> constexpr int Nr = Nk<BITS> + 6;
+
 
 
 void AddRoundKey(aes_block& b, const byte_word* const roundkey) noexcept;
@@ -34,9 +34,9 @@ void MixColumns(aes_block&) noexcept;
 void ShiftRows(aes_block&) noexcept;
 void SubBytes(aes_block&) noexcept;
 
-template<int BITS> [[nodiscard]] roundkey<BITS> KeyExpansion(const aeskey<BITS>& AESkey) noexcept;
-template<int BITS> [[nodiscard]] aes_block cipher(aes_block plaintext, const roundkey<BITS>&) noexcept;
-template<int BITS> [[nodiscard]] aes_block InvCipher(aes_block ciphertext, const roundkey<BITS>& roundkeys) noexcept;
+[[nodiscard]] roundkey KeyExpansion(const aeskey& AESkey) noexcept;
+[[nodiscard]] aes_block cipher(aes_block plaintext, const roundkey&) noexcept;
+[[nodiscard]] aes_block InvCipher(aes_block ciphertext, const roundkey& roundkeys) noexcept;
 
 // rotates the bits of a byte e.g.  10001001 -> 00010011
 constexpr uint8_t ROTL8(uint8_t x, int shift) {
@@ -222,97 +222,77 @@ constexpr auto Rcon = [](){
     return res;
 }();
 
-/*
- Template for expanding out the input secret encryption/decryption key
- Below are instantiations for 128 bit, 192 bit, and 256 bit keys
- */
-template<int BITS>
-roundkey<BITS> KeyExpansion(const aeskey<BITS>& AESkey) noexcept {
-    roundkey<BITS> keybytes;
-    for(int i = 0; i < Nk<BITS>; i++) {
+
+roundkey KeyExpansion(const aeskey& AESkey) noexcept {
+    roundkey keybytes;
+    keybytes.resize(28 + AESkey.size());
+
+    const ssize_t Nka = AESkey.size()/4;
+    const ssize_t Nra = Nka + 6;
+    
+    for(int i = 0; i < Nka; i++) {
         for(int j = 0; j < 4; j++) {
             keybytes[i][j] = AESkey[4*i +j];
         }
     }
-    for(int i = Nk<BITS>; i < Nb * (Nr<BITS>+1); i++) {
+    for(ssize_t i = Nka; i < Nb * (Nra+1); i++) {
         byte_word temp;
         temp = keybytes[i-1];
         
-        if (i % Nk<BITS> == 0) {
+        if (i % Nka == 0) {
             std::rotate(temp.begin(),&temp[1],temp.end());
             std::transform(temp.begin(), temp.end(), temp.begin(), [](uint8_t c) { return SBOX[c]; });
-            temp[0] ^= Rcon[i/Nk<BITS>];
-        } else if (Nk<BITS> > 6 and i % Nk<BITS> == 4) {
+            temp[0] ^= Rcon[i/Nka];
+        } else if (Nka > 6 and i % Nka == 4) {
             std::transform(temp.begin(), temp.end(), temp.begin(), [](uint8_t c) { return SBOX[c]; });
         }
-        const auto& kb = keybytes[i-Nk<BITS>];
+        const auto& kb = keybytes[i-Nka];
         std::transform(kb.begin(), kb.end(), temp.begin(), keybytes[i].begin(), std::bit_xor<uint8_t>());
     }
     return keybytes;
 }
-roundkey<128> aes_key_schedule(const aeskey<128>& AESkey) noexcept {
-    return KeyExpansion<128>(AESkey);
+roundkey aes_key_schedule(const aeskey& AESkey) noexcept {
+    return KeyExpansion(AESkey);
 }
-roundkey<192> aes_key_schedule(const std::array<uint8_t,24>& AESkey) noexcept {
-    return KeyExpansion<192>(AESkey);
-}
-roundkey<256> aes_key_schedule(const std::array<uint8_t,32>& AESkey) noexcept {
-    return KeyExpansion<256>(AESkey);
-}
+
+
 
 /*
  performs the encryption on a block
  */
-template<int BITS>
-aes_block cipher(aes_block state, const roundkey<BITS>& w) noexcept {
-    AddRoundKey(state, &w[0]);
-    for (int i = 1; i < Nr<BITS>; i++) {
-        SubBytes(state);
-        ShiftRows(state);
-        MixColumns(state);
-        AddRoundKey(state, &w[Nb*i]);
+
+
+aes_block aes_encrypt(aes_block plain_block, const roundkey& roundkeys) noexcept {
+    const ssize_t Nra = roundkeys.size()/4 - 1;
+    
+    AddRoundKey(plain_block, &roundkeys[0]);
+    for (int i = 1; i < Nra; i++) {
+        SubBytes(plain_block);
+        ShiftRows(plain_block);
+        MixColumns(plain_block);
+        AddRoundKey(plain_block, &roundkeys[Nb*i]);
     }
-    SubBytes(state);
-    ShiftRows(state);
-    AddRoundKey(state, &w[Nb*Nr<BITS>]);
-    return state;
-}
-aes_block aes_encrypt(aes_block plaintext, const roundkey<128>& roundkeys) noexcept {
-    return cipher<128>(plaintext, roundkeys);
-}
-aes_block aes_encrypt(aes_block plaintext, const roundkey<192>& roundkeys) noexcept {
-    return cipher<192>(plaintext, roundkeys);
-}
-aes_block aes_encrypt(aes_block plaintext, const roundkey<256>& roundkeys) noexcept {
-    return cipher<256>(plaintext, roundkeys);
+    SubBytes(plain_block);
+    ShiftRows(plain_block);
+    AddRoundKey(plain_block, &roundkeys[Nb*Nra]);
+    return plain_block;
 }
 
-/*
- template for performing the decryption on a block
- instantiations below
- */
-template<int BITS>
-aes_block InvCipher(aes_block state, const roundkey<BITS>& w) noexcept {
-    AddRoundKey(state, &w[Nb*Nr<BITS>]);
-    for (int i = Nr<BITS>-1; i >= 1; i--) {
-        InvShiftRows(state);
-        InvSubBytes(state);
-        AddRoundKey(state, &w[Nb*i]);
-        InvMixColumns(state);
+
+aes_block aes_decrypt(aes_block ciphertext, const roundkey& roundkeys) noexcept {
+    const ssize_t Nra = roundkeys.size()/4 - 1;
+
+    AddRoundKey(ciphertext, &roundkeys[Nb*Nra]);
+    for (ssize_t i = Nra-1; i >= 1; i--) {
+        InvShiftRows(ciphertext);
+        InvSubBytes(ciphertext);
+        AddRoundKey(ciphertext, &roundkeys[Nb*i]);
+        InvMixColumns(ciphertext);
     }
-    InvShiftRows(state);
-    InvSubBytes(state);
-    AddRoundKey(state, &w[0]);
-    return state;
-}
-aes_block aes_decrypt(aes_block ciphertext, const roundkey<128>& roundkeys) noexcept {
-    return InvCipher<128>(ciphertext, roundkeys);
-}
-aes_block aes_decrypt(aes_block ciphertext, const roundkey<192>& roundkeys) noexcept {
-    return InvCipher<192>(ciphertext, roundkeys);
-}
-aes_block aes_decrypt(aes_block ciphertext, const roundkey<256>& roundkeys) noexcept {
-    return InvCipher<256>(ciphertext, roundkeys);
+    InvShiftRows(ciphertext);
+    InvSubBytes(ciphertext);
+    AddRoundKey(ciphertext, &roundkeys[0]);
+    return ciphertext;
 }
 
 } // namespace fbw::aes

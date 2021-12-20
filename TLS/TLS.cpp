@@ -36,7 +36,8 @@
 #include "TLS_enums.hpp"
 #include "global.hpp"
 #include "keccak.hpp"
-
+#include "blockchain.hpp"
+#include "galois_counter.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -321,7 +322,9 @@ void TLS::handle_client_key_exchange(const ustring& key_exchange) {
     }
     std::copy(&key_exchange[5], &key_exchange[37], client_public_key.begin());
     master_secret = make_master_secret(server_private_key_ephem, client_public_key, m_server_random, m_client_random);
-    ustring key_material = expand_master(master_secret, m_server_random, m_client_random, 104);
+    
+    // AES_256_CBC_SHA256 has the largest amount of material at 128 bytes
+    ustring key_material = expand_master(master_secret, m_server_random, m_client_random, 128);
     cipher_context->set_key_material(key_material);
     handshake_hasher->update(key_exchange.data(), key_exchange.size());
 }
@@ -421,18 +424,18 @@ void TLS::server_handshake_finished(status_message& output) {
 }
 
 void TLS::client_application_data(const ustring& application_data, status_message& output) {
-    auto app_out = next->handle(application_data);
+    const auto app_out = next->handle(application_data);
     output.m_status = app_out.m_status;
     int record_size = 1;
     for(size_t i = 0; i < app_out.m_response.size(); i += record_size) {
         // break up the http byte stream randomly
-        record_size = std::clamp(256, int(randomgen.randgen64() % (7*app_out.m_response.size()/4)), 10000);
+        record_size = std::clamp(int(randomgen.randgen64() % (7*app_out.m_response.size()/4)), 256, 10000);
         
         tls_record out;
         out.type = static_cast<uint8_t>(ContentType::Application);
         out.major_version = 3;
         out.minor_version = 3;
-        out.contents.append(&app_out.m_response[i], &app_out.m_response[std::max(i, app_out.m_response.size())]);
+        out.contents.append(&app_out.m_response[i], &app_out.m_response[std::min(i+record_size, app_out.m_response.size())]);
         if(handshake_done) {
             out = cipher_context->encrypt(std::move(out));
         } else {
@@ -543,13 +546,23 @@ std::array<uint8_t,48> TLS::make_master_secret(std::array<uint8_t,32> server_pri
 unsigned short TLS::cipher_choice(const ustring& s) {
     for(size_t i = 0; i < s.size(); i += 2) {
         uint16_t x = safe_asval(s, i, 2);
+        
         if (x == static_cast<uint16_t>(cipher_suites::TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA)) {
-            cipher_context = std::make_unique<aes::AES_128_CBC_context>();
+            cipher_context = std::make_unique<aes::AES_CBC_SHA>(16);
             hasher_factory = std::make_unique<sha256>();
             handshake_hasher = hasher_factory->clone();
             // cloneable should maybe be an interface class
             return x;
         }
+        /*
+        if(x == static_cast<uint16_t>(cipher_suites::TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)) {
+            cipher_context = std::make_unique<aes::AES_128_GCM_SHA256>();
+            hasher_factory = std::make_unique<sha256>();
+            handshake_hasher = hasher_factory->clone();
+            return x;
+        }
+         */
+        
     }
     throw ssl_error("no supported ciphers");
 }

@@ -11,22 +11,25 @@
 #include "AES.hpp"
 #include "cipher_base.hpp"
 #include "global.hpp"
+#include <vector>
 
 #include <stdio.h>
 
 namespace fbw::aes {
 
-class AES_128_CBC_context : public cipher_base {
-    roundkey<128> server_write_round_keys;
-    roundkey<128> client_write_round_keys;
+class AES_CBC_SHA : public cipher_base {
+    roundkey server_write_round_keys;
+    roundkey client_write_round_keys;
     std::array<uint8_t, 20> server_MAC_key;
     std::array<uint8_t, 20> client_MAC_key;
+
+    size_t m_key_size;
     
     uint64_t seqno_server = 0;
     uint64_t seqno_client = 0;
     
 public:
-    AES_128_CBC_context() = default;
+    AES_CBC_SHA(size_t key_size);
     
     void set_key_material(ustring material) override;
     tls_record encrypt(tls_record record) override;

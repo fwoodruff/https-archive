@@ -25,27 +25,17 @@ using byte_word  = std::array<uint8_t,4>;
 using aes_block = std::array<uint8_t, 16>;
 
 
-template<int B>
-struct roundkeys_t;
 
-template<> struct roundkeys_t<128> { using round = std::array<byte_word, 44>; using key = std::array<uint8_t,16>; };
-template<> struct roundkeys_t<192> { using round = std::array<byte_word, 52>; using key = std::array<uint8_t,24>; };
-template<> struct roundkeys_t<256> { using round = std::array<byte_word, 60>; using key = std::array<uint8_t,32>; };
-
-template<int B> using roundkey = typename roundkeys_t<B>::round;
-template<int B> using aeskey = typename roundkeys_t<B>::key;
+using roundkey = typename std::vector<byte_word>;
+using aeskey = typename std::vector<uint8_t>;
 
 
-[[nodiscard]] roundkey<128> aes_key_schedule(const std::array<uint8_t,16>& AESkey) noexcept;
-[[nodiscard]] roundkey<192> aes_key_schedule(const std::array<uint8_t,24>& AESkey) noexcept;
-[[nodiscard]] roundkey<256> aes_key_schedule(const std::array<uint8_t,32>& AESkey) noexcept;
+[[nodiscard]] roundkey aes_key_schedule(const aeskey& AESkey) noexcept;
 
-[[nodiscard]] aes_block aes_encrypt(aes_block plaintext, const roundkey<128>& roundkeys) noexcept;
-[[nodiscard]] aes_block aes_encrypt(aes_block plaintext, const roundkey<192>& roundkeys) noexcept;
-[[nodiscard]] aes_block aes_encrypt(aes_block plaintext, const roundkey<256>& roundkeys) noexcept;
-[[nodiscard]] aes_block aes_decrypt(aes_block ciphertext, const roundkey<128>& roundkeys) noexcept;
-[[nodiscard]] aes_block aes_decrypt(aes_block ciphertext, const roundkey<192>& roundkeys) noexcept;
-[[nodiscard]] aes_block aes_decrypt(aes_block ciphertext, const roundkey<256>& roundkeys) noexcept;
+[[nodiscard]] aes_block aes_encrypt(aes_block plaintext, const roundkey& roundkeys) noexcept;
+
+[[nodiscard]] aes_block aes_decrypt(aes_block ciphertext, const roundkey& roundkeys) noexcept;
+
 
 } //fbw
 

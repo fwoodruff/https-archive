@@ -16,23 +16,26 @@
 
 namespace fbw::aes {
 
+AES_CBC_SHA::AES_CBC_SHA(size_t key_size) : m_key_size(key_size) { }
 
 
-
-void AES_128_CBC_context::set_key_material(ustring expanded_master)  {
+void AES_CBC_SHA::set_key_material(ustring expanded_master)  {
     assert(expanded_master.size() >= 104);
 
-    std::array<unsigned char,16> client_write_key;
-    std::array<unsigned char,16> server_write_key;
+    std::vector<uint8_t> client_write_key;
+    client_write_key.resize(16);
+    std::vector<uint8_t> server_write_key;
+    server_write_key.resize(16);
     
-    std::copy(&expanded_master[0], &expanded_master[20], client_MAC_key.begin());
-    std::copy(&expanded_master[20], &expanded_master[40], server_MAC_key.begin());
-    std::copy(&expanded_master[40], &expanded_master[56], client_write_key.begin());
-    std::copy(&expanded_master[56], &expanded_master[72], server_write_key.begin());
+    auto it = expanded_master.begin();
+    std::copy(it, it += client_MAC_key.size(), client_MAC_key.begin());
+    std::copy(it, it += server_MAC_key.size(), server_MAC_key.begin());
+    std::copy(it, it += client_write_key.size(), client_write_key.begin());
+    std::copy(it, it += server_write_key.size(), server_write_key.begin());
     //std::copy(&expanded_master[72], &expanded_master[88], client_write_IV.begin());
     //std::copy(&expanded_master[88], &expanded_master[104], server_write_IV.begin());
     
-    client_write_round_keys = aes_key_schedule(client_write_key); // retest?
+    client_write_round_keys = aes_key_schedule(client_write_key);
     server_write_round_keys = aes_key_schedule(server_write_key);
 }
 
@@ -59,7 +62,7 @@ ustring pad_message(ustring message) {
 }
 
 
-tls_record AES_128_CBC_context::encrypt(tls_record record) {
+tls_record AES_CBC_SHA::encrypt(tls_record record) {
 
     auto ctx = hmac(std::make_unique<sha1>() , &*server_MAC_key.begin(),server_MAC_key.size() );
 
@@ -95,7 +98,7 @@ tls_record AES_128_CBC_context::encrypt(tls_record record) {
     return record;
 }
 
-tls_record AES_128_CBC_context::decrypt(tls_record record) {
+tls_record AES_CBC_SHA::decrypt(tls_record record) {
     if(record.contents.size() % 16 != 0) {
         throw ssl_error("bad encrypted record length");
     }
