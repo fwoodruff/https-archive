@@ -29,10 +29,11 @@ namespace fbw {
 // tidy this up with all arguments
 connection::connection() :
 activity(status::read_only), primary_receiver(nullptr) {
-        
+    logger << "connection::connection()" << std::endl;
 }
 
 void connection::push_receiver(std::unique_ptr<receiver>&& r) {
+    logger << "connection::push_receiver()" << std::endl;
     if(primary_receiver != nullptr) {
         r->next = std::move(primary_receiver);
     }
@@ -41,6 +42,7 @@ void connection::push_receiver(std::unique_ptr<receiver>&& r) {
 
 
 connection::~connection() {
+    logger << "connection::~connection()" << std::endl;
     if(context != nullptr) {
         try {
             context->del_fd(m_socket);
@@ -55,6 +57,7 @@ connection::~connection() {
 
 
 void connection::send_bytes_over_network() {
+    logger << "connection::send_bytes_over_network()" << std::endl;
     switch(activity) {
         case status::read_only:
         case status::always_poll:
@@ -62,11 +65,12 @@ void connection::send_bytes_over_network() {
         case status::closing:
             break;
         case status::closed:
-            assert(false);
+            file_assert(false, "cannot send bytes over closed connection");
             return;
     }
     
     auto bytes = m_socket.send(write_buffer.data(), write_buffer.size(), 0);
+    file_assert(bytes <= write_buffer.size(), "bytes <= write_buffer.size()");
     if(bytes == write_buffer.size()) {
         write_buffer.clear();
     } else {
@@ -75,9 +79,13 @@ void connection::send_bytes_over_network() {
     if(write_buffer.empty() and activity == status::closing) {
         activity = status::closed;
     }
+    if(write_buffer.size() > 2'000'000) {
+        throw std::runtime_error("too much requested");
+    }
 }
 
 ustring connection::receive_bytes_from_network() {
+    logger << "connection::receive_bytes_from_network()" << std::endl;
     ustring out;
     out.resize(BUFFER_SIZE);
     const auto bytes = m_socket.recv(out.data(), out.size(), 0);
@@ -97,6 +105,7 @@ ustring connection::receive_bytes_from_network() {
 }
 
 ssize_t connection::queue_bytes_for_write(ustring bytes) {
+    logger << "connection::queue_bytes_for_write()" << std::endl;
     /*
     std::cout << "SEND BYTES:\n";
     for(auto c : bytes) {
@@ -105,13 +114,15 @@ ssize_t connection::queue_bytes_for_write(ustring bytes) {
     std::cout << std::endl;
      */
     write_buffer.append(bytes);
+    
 
     return write_buffer.size();
 }
 
 bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanoseconds> loop_time) noexcept {
+    logger << "connection::handle_connection()" << std::endl;
     try {
-        assert(primary_receiver != nullptr);
+        file_assert(primary_receiver != nullptr, "bad primary receiver");
         switch(activity) {
             case status::read_only:
             //case status::dormant:
@@ -160,6 +171,13 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
 
     
     context->mod_fd(m_socket, event.node, poll_for_read, poll_for_write);
+    
+    if(activity != status::closed) {
+        if(!write_buffer.empty()) {
+            file_assert(poll_for_write, "can poll for write");
+        }
+    }
+    
     return activity == status::closed;
 }
 

@@ -5,8 +5,8 @@
 //  Created by Frederick Benjamin Woodruff on 15/07/2021.
 //
 
-#ifndef http_header_hpp
-#define http_header_hpp
+#ifndef string_utils_hpp
+#define string_utils_hpp
 
 #include "global.hpp"
 
@@ -69,9 +69,9 @@ std::string extract(std::string& bytes, std::string delimiter);
  converts a contiguous range of bytes into a pretty hex string
  this is used in the eTag
  */
-[[nodiscard]] std::string bytes_to_hex_string(const uint8_t* const data, int len);
+[[nodiscard]] std::string bytes_to_hex_string(const uint8_t* const data, size_t len);
 
 
 
 } // namespace fbw
-#endif /* http_header_hpp */
+#endif /* string_utils_hpp */

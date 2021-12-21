@@ -149,21 +149,25 @@ constexpr uint8_t GMul_explicit(uint8_t a, uint8_t b) {
     return p;
 }
 
+
 /*
  Caches the Galois field multiplications and retrieves from the cache
  */
-uint8_t GMul(uint8_t a, uint8_t b) {
-    assert(a < 16);
-    constexpr auto res = [](){
-        std::array<std::array<uint8_t,256>,16> resa {{}};
-        for(int i = 0; i < 16; i++) {
-            for(int j = 0; j < 256; j++) {
-                resa[i][j] = GMul_explicit(i,j);
-            }
+constexpr auto GMULRES = []() constexpr {
+    std::array<std::array<uint8_t,256>,16> resa {{}};
+    for(int i = 0; i < 16; i++) {
+        for(int j = 0; j < 256; j++) {
+            resa[i][j] = GMul_explicit(i,j);
         }
-        return resa;
-    }();
-    return res[a][b];
+    }
+    return resa;
+}();
+uint8_t GMul(uint8_t a, uint8_t b) {
+    file_assert(a < 16, "array out of bounds");
+    // I moved the table outside of function scope.
+    // Without optimisation flags the compiler was memmoving
+    // the whole table every call.
+    return GMULRES[a][b];
 }
 
 

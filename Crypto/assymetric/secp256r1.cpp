@@ -80,8 +80,8 @@ constexpr affine_point256 Gaff = {
 
 
 ct_u256 add_mod(ct_u256 x, ct_u256 y , ct_u256 mod) noexcept {
-    assert(x < mod);
-    assert(y < mod);
+    file_assert(x < mod, "add_mod(): x < mod" );
+    file_assert(y < mod, "add_mod(): y < mod" );
     auto sum = x + y;
     if (sum < x or sum > mod) {
         sum -= mod;
@@ -90,8 +90,8 @@ ct_u256 add_mod(ct_u256 x, ct_u256 y , ct_u256 mod) noexcept {
 }
 
 ct_u256 sub_mod(ct_u256 x, ct_u256 y, ct_u256 mod) noexcept {
-    assert(x < mod);
-    assert(y < mod);
+    file_assert(x < mod, "sub_mod(): x < mod" );
+    file_assert(y < mod, "sub_mod(): y < mod" );
     if(x > y) {
         return x - y;
     } else {
@@ -210,7 +210,8 @@ affine_point256 point_add(const affine_point256& P, const affine_point256& Q) no
 
 // finds point R on the line tangent to point P on the curve
 affine_point256 point_double(const affine_point256& P) noexcept {
-    assert(P.ycoord <= secp256r1_p);
+    file_assert(P.ycoord <= secp256r1_p, "error in SECP point double input");
+    
     if (P.ycoord == "0x0"_xl or P.ycoord == secp256r1_p) {
         // probably buggy
         return POINT_AT_INFINITY;
@@ -243,8 +244,10 @@ affine_point256 point_double(const affine_point256& P) noexcept {
 }
 
 affine_point256 point_multiply_affine(const ct_u256& secret, const ct_u256& x_coord, const ct_u256& y_coord) noexcept {
-    assert(secret < secp256r1_p);
-    assert(secret != "0x0"_xl);
+    file_assert(secret < secp256r1_p, "secret < secp256r1_p");
+    file_assert(secret != "0x0"_xl, "secret != 0");
+
+    
     affine_point256 out {"0x0"_xl,"0x0"_xl,"0x0"_xl};
 
     affine_point256 P;

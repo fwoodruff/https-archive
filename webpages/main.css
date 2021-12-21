@@ -39,3 +39,4 @@ address {
   padding-top: 1em;
   border-top: thin dotted
 }
+#loadOverlay{display: none;}

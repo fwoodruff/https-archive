@@ -5,7 +5,7 @@
 //  Created by Frederick Benjamin Woodruff on 12/12/2021.
 //
 
-#include "blockchain.hpp"
+#include "block_chain.hpp"
 #include "secure_hash.hpp"
 #include "AES.hpp"
 #include "global.hpp"
@@ -20,7 +20,7 @@ AES_CBC_SHA::AES_CBC_SHA(size_t key_size) : m_key_size(key_size) { }
 
 
 void AES_CBC_SHA::set_key_material(ustring expanded_master)  {
-    assert(expanded_master.size() >= 104);
+    file_assert(expanded_master.size() >= 104, "insufficient material in set_key");
 
     std::vector<uint8_t> client_write_key;
     client_write_key.resize(16);
@@ -32,8 +32,6 @@ void AES_CBC_SHA::set_key_material(ustring expanded_master)  {
     std::copy(it, it += server_MAC_key.size(), server_MAC_key.begin());
     std::copy(it, it += client_write_key.size(), client_write_key.begin());
     std::copy(it, it += server_write_key.size(), server_write_key.begin());
-    //std::copy(&expanded_master[72], &expanded_master[88], client_write_IV.begin());
-    //std::copy(&expanded_master[88], &expanded_master[104], server_write_IV.begin());
     
     client_write_round_keys = aes_key_schedule(client_write_key);
     server_write_round_keys = aes_key_schedule(server_write_key);
@@ -43,7 +41,8 @@ void AES_CBC_SHA::set_key_material(ustring expanded_master)  {
 ustring pad_message(ustring message) {
     const auto blocksize = 16;
     const auto padmax = 256;
-    assert(padmax > blocksize and padmax % blocksize == 0);
+    
+    file_assert(padmax > blocksize and padmax % blocksize == 0, "misaligned padding");
     
     // randomises the padding length
     const auto min_padded_message_size = ((message.size() / blocksize)+1)* blocksize; //272
@@ -53,12 +52,12 @@ ustring pad_message(ustring message) {
                 (randval*blocksize) % (blocksize+max_padded_message_size-min_padded_message_size);
 
     const auto padding_checked = padded_message_size - message.size();
-    assert(padded_message_size > message.size());
-    //[[Why_did_this_fire]];
-    assert(padding_checked < padmax); // this fired
+    
+    file_assert(padded_message_size > message.size(), "padded_message_size > message.size()");
+    file_assert(padding_checked < padmax, "padding_checked < padmax"); // this has actually fired
     const uint8_t padding = padding_checked;
     message.append(padding, padding-1);
-    assert(message.size() % blocksize == 0);
+    file_assert(message.size() % blocksize == 0, "message.size() % blocksize == 0");
     return message;
 }
 
@@ -75,7 +74,7 @@ tls_record AES_CBC_SHA::encrypt(tls_record record) {
     sequence[10] = record.minor_version;
     write_int(record.contents.size(),&sequence[11], 2);
     ctx.update(sequence.begin(), sequence.size());
-    ctx.update((uint8_t*)&record.contents[0], record.contents.size());
+    ctx.update(record.contents);
     auto machash = std::move(ctx).hash();
     
     record.contents.append(machash.begin(),machash.end());
@@ -152,7 +151,7 @@ tls_record AES_CBC_SHA::decrypt(tls_record record) {
     write_int(plaintext.size(),&mac_hash_header[11], 2);
 
     ctx.update(mac_hash_header.data(), mac_hash_header.size());
-    ctx.update(plaintext.data(), plaintext.size());
+    ctx.update(plaintext);
     auto machash = std::move(ctx).hash();
     
     if(!std::equal(mac_calc.begin(), mac_calc.end(), machash.begin())) {

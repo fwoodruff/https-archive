@@ -14,12 +14,13 @@ namespace fbw {
 class sha256: public hash_base {
 public:
     static constexpr int64_t block_size = 64;
-    sha256();
+    sha256() noexcept;
     
     std::unique_ptr<hash_base> clone() const override;
-    sha256& update(const uint8_t* begin, size_t size) override;
+    sha256& update(const uint8_t* begin, size_t size) noexcept override;
+    sha256& update(const ustring& begin) noexcept override;
     [[nodiscard]] std::vector<uint8_t> hash() const & override;
-    std::vector<uint8_t> hash() && override;
+    std::vector<uint8_t> hash() && noexcept override;
     [[nodiscard]] size_t get_block_size() const noexcept override;
 private:
     size_t datalen;
@@ -36,9 +37,10 @@ public:
     sha1();
     
     std::unique_ptr<hash_base> clone() const override;
-    sha1& update(const uint8_t* begin, size_t size) override;
+    sha1& update(const uint8_t* begin, size_t size) noexcept override;
+    sha1& update(const ustring& begin) noexcept override;
     std::vector<uint8_t> hash() const & override;
-    std::vector<uint8_t> hash() && override;
+    std::vector<uint8_t> hash() && noexcept override;
     [[nodiscard]] size_t get_block_size() const noexcept override;
 
 private:
@@ -57,8 +59,9 @@ class hmac {
 public:
     hmac(std::unique_ptr<hash_base> hasher, const uint8_t* key, size_t size);
     hmac& update(const uint8_t* begin, size_t size);
+    hmac& update(const ustring& data);
     [[nodiscard]] ustring hash() const &;
-    ustring hash() &&;
+    ustring hash() && ;
 
     hmac(const hmac &);
     hmac& operator=(const hmac &);

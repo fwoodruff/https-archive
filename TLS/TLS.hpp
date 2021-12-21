@@ -5,11 +5,11 @@
 //  Created by Frederick Benjamin Woodruff on 25/11/2021.
 //
 
-#ifndef tls_connection_hpp
-#define tls_connection_hpp
+#ifndef tls_hpp
+#define tls_hpp
 
 #include "connection.hpp"
-#include "blockchain.hpp"
+#include "block_chain.hpp"
 #include "global.hpp"
 #include "secure_hash.hpp"
 #include "receiver.hpp"

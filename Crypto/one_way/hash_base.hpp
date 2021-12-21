@@ -19,9 +19,11 @@ public:
     virtual ~hash_base() noexcept = default;
     virtual std::unique_ptr<hash_base> clone() const = 0;
     
-    virtual hash_base& update(const uint8_t* begin, size_t size) = 0;
+    virtual hash_base& update(const uint8_t* begin, size_t size) noexcept = 0;
+    virtual hash_base& update(const ustring& data) noexcept = 0;
+    
     virtual std::vector<uint8_t> hash() const & = 0;
-    virtual std::vector<uint8_t> hash() && = 0;
+    virtual std::vector<uint8_t> hash() && noexcept = 0;
     [[nodiscard]] virtual size_t get_block_size() const noexcept = 0;
 };
 

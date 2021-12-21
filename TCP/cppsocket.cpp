@@ -7,6 +7,8 @@
 
 #include "cppsocket.hpp"
 
+#include "global.hpp"
+
 #include <fcntl.h>
 #include <unistd.h>
 #include <sys/socket.h>
@@ -31,6 +33,7 @@ int cppsocket::get_native() const {
 }
 
 cppsocket::~cppsocket() {
+    logger << "cppsocket::~cppsocket()" << std::endl;
     if(m_fd != -1) {
         std::cout << "closing socketfd: " << m_fd << std::endl;
         ::close(m_fd);
@@ -41,16 +44,22 @@ cppsocket::~cppsocket() {
 cppsocket::cppsocket() noexcept : m_fd(-1) { }
 
 cppsocket::cppsocket(int _fd) noexcept :
-    m_fd(_fd) { }
+m_fd(_fd) {
+    logger << "cppsocket::cppsocket(int)" << std::endl;
+}
 
 cppsocket::cppsocket(int domain, int type, int protocol) :
-    cppsocket(::socket(domain, type, protocol)) {}
+    cppsocket(::socket(domain, type, protocol)) {
+        logger << "cppsocket::cppsocket(int,int,int)" << std::endl;
+}
 
 cppsocket::cppsocket(cppsocket&& other) noexcept {
+    logger << "cppsocket::cppsocket(cppsocket&& other)" << std::endl;
     *this = std::move(other);
 }
 
 cppsocket& cppsocket::operator=(cppsocket&& other) noexcept {
+    logger << "cppsocket::operator=(cppsocket&& other)" << std::endl;
     m_fd = std::exchange(other.m_fd, -1);
     return *this;
 }

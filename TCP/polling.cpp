@@ -35,13 +35,8 @@ void poll_context::add_fd(const cppsocket& sock, node_ptr return_object, bool re
     static_assert(std::is_trivially_copyable<node_ptr>());
     std::memcpy(&event.data.ptr, &return_object,sizeof(return_object));
     if(epoll_ctl(m_epfd, EPOLL_CTL_ADD, sock.get_native(), &event) == -1) {
-        assert(errno != EBADF);
-        assert(errno != EEXIST);
-        assert(errno != EINVAL);
-        assert(errno != ELOOP);
-        assert(errno != ENOENT);
-        assert(errno != EPERM);
-        throw std::system_error(errno, std::generic_category());
+        logger << "errno: " << errno << std::endl;
+        file_assert(false, "epoll add failed");
     }
 }
 
@@ -52,29 +47,18 @@ void poll_context::mod_fd(const cppsocket& sock, node_ptr return_object, bool re
     static_assert(std::is_trivially_copyable<node_ptr>());
     std::memcpy(&event.data.ptr,&return_object,sizeof(return_object));
     if(epoll_ctl(m_epfd, EPOLL_CTL_MOD, sock.get_native(), &event) == -1) {
-        assert(errno != EBADF);
-        assert(errno != EEXIST);
-        assert(errno != EINVAL);
-        assert(errno != ELOOP);
-        assert(errno != ENOENT);
-        assert(errno != EPERM);
-        throw std::system_error(errno, std::generic_category());
+        logger << "errno: " << errno << std::endl;
+        file_assert(false, "epoll mod failed");
     }
 }
 
 void poll_context::del_fd(const cppsocket& sock) {
 
     if(epoll_ctl(m_epfd, EPOLL_CTL_DEL, sock.get_native(), nullptr)) {
-        assert(errno != EBADF);
-        assert(errno != EEXIST);
-        assert(errno != EINVAL);
-        assert(errno != ELOOP);
-        assert(errno != ENOENT);
-        assert(errno != EPERM);
-        throw std::system_error(errno, std::generic_category());
+        logger << "errno: " << errno << std::endl;
+        file_assert(false, "epoll del failed");
     }
 }
-
 
 std::vector<fpollfd> poll_context::get_events(bool do_timeout) {
     std::vector<fpollfd> events;
@@ -82,13 +66,11 @@ std::vector<fpollfd> poll_context::get_events(bool do_timeout) {
     epoll_events.resize(MAX_SOCKETS);
     const int num_descriptors = epoll_wait(m_epfd, epoll_events.data(), MAX_SOCKETS, do_timeout? timeoutms: -1);
     if (num_descriptors == -1) {
-        assert(errno != EBADF);
-        assert(errno != EFAULT);
-        assert(errno != EINVAL);
         if(errno == EINTR) {
             return events;
         }
-        throw std::system_error(errno, std::generic_category());
+        logger << "errno: " << errno << std::endl;
+        file_assert(false, "epoll_wait failed");
     }
     events.resize(num_descriptors);
     
@@ -107,7 +89,7 @@ poll_context::~poll_context() { }
 
 void poll_context::add_fd(const cppsocket& sock, node_ptr return_object, bool read_state, bool write_state) {
     auto succ = m_events.insert({sock.get_native(),{return_object, read_state,write_state}});
-    assert(succ.second == 1);
+    file_assert(succ.second == 1);
 }
 
 void poll_context::mod_fd(const cppsocket& sock, node_ptr return_object, bool read_state, bool write_state) {
@@ -141,17 +123,19 @@ std::vector<fpollfd> poll_context::get_events(bool do_timeout) {
     num_descriptors = poll(evs.data(), (int) evs.size(), do_timeout? timeoutms : -1);
     
     if(num_descriptors == -1) {
-        assert(errno != EFAULT);
         if(errno == EINTR) {
             return events;
         }
-        throw std::system_error(errno, std::generic_category());
+        logger << "errno: " << errno << std::endl;
+        file_assert(false, "poll failed");
     }
     events.reserve(num_descriptors);
     for(const auto& pfd : evs) {
         if(pfd.revents & (POLLIN | POLLOUT)) {
             fpollfd out_event {.read = false, .write = false};
-            assert(m_events.find(pfd.fd) != m_events.end());
+//#ifndef NDEBUG
+            file_assert(m_events.find(pfd.fd) != m_events.end(), "m_events.find(pfd.fd) != m_events.end()");
+//#endif
             out_event.node = m_events[pfd.fd].node;
             if(pfd.revents & POLLIN)  { out_event.read  = true; }
             if(pfd.revents & POLLOUT) { out_event.write = true; }

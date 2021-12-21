@@ -5,6 +5,7 @@
 //
 
 #include "keccak.hpp"
+#include "secure_hash.hpp"
 #include "http_handler.hpp"
 #include "mimemap.hpp"
 #include "string_utils.hpp"
@@ -83,12 +84,12 @@ std::string file_to_http(const std::string& rootdir, std::string filename) {
     buffer << t.rdbuf();
     std::string file_contents = buffer.str();
 
-    std::array<uint8_t,16> digest {};
-    keccak_sponge keccak;
-    
-    // char* not convertible to unsigned char*
-    keccak.absorb(file_contents.data(), file_contents.size());
-    keccak.squeeze(digest.data(), digest.size());
+    /*
+     // I don't trust the reinterpret cast
+    sha256 eTag_hasher;
+    eTag_hasher.update(reinterpret_cast<uint8_t*>(&*file_contents.data()), file_contents.size());
+    auto eTag = eTag_hasher.hash();
+     */
     auto time = std::time(0);
     if((std::time_t)(-1) == time) {
         throw http_error("500 Internal Server Error");
@@ -102,7 +103,7 @@ std::string file_to_http(const std::string& rootdir, std::string filename) {
         << "Content-Length: " << file_contents.size() << "\r\n"
         // << "Last-Modified: " << timestring(get_file_date(file.get())) << "\r\n"
         << "Server: FredPi/0.1 (Unix) (Raspbian/Linux)\r\n"
-        << "ETag: " << bytes_to_hex_string(digest.data(), digest.size()) << "\r\n"
+        // << "ETag: " << bytes_to_hex_string(eTag.data(), eTag.size()) << "\r\n"
         << "\r\n"
         << file_contents;
     

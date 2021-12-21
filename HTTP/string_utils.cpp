@@ -60,7 +60,7 @@ time_t get_file_date(FILE* file) {
 /*
  hexdump used in eTag
  */
-std::string bytes_to_hex_string(const uint8_t* const data, int len) {
+std::string bytes_to_hex_string(const uint8_t* const data, size_t len) {
     std::ostringstream ss;
     for(int i = 0; i < len; ++i) {
         ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(data[i]);
@@ -109,7 +109,7 @@ const static std::unordered_set<std::string> verbs {"GET", "HEAD", "POST", "PUT"
  the return tpe is a length or a delimiter
  */
 std::pair<std::string, size_t> body_size(const std::string& header) {
-    assert(header.find("\r\n\r\n") != std::string::npos);
+    file_assert(header.find("\r\n\r\n") != std::string::npos, "header.find(\r\n\r\n) != std::string::npos");
     const auto method = get_method(header);
     if (method.empty() or (verbs.find(method[0]) == verbs.end())) {
         throw http_error("400 Bad Request");
@@ -135,7 +135,7 @@ std::pair<std::string, size_t> body_size(const std::string& header) {
             }
         } else if (content.size() > multipart.size() and content.substr(0, multipart.size()) == multipart) {
             const auto n = content.find("\r\n");
-            assert(n != std::string::npos);
+            file_assert(n != std::string::npos, "string utils 138: n != npos");
             std::string delimiter = content.substr(multipart.size(), n);
             if (delimiter=="") {
                 throw http_error("400 Bad Request");
@@ -158,11 +158,11 @@ std::pair<std::string, size_t> body_size(const std::string& header) {
  Used for finding the Content-Type, Content-Length etc.
  */
 std::string get_argument(const std::string& header, std::string field) {
-    assert(header.find("\r\n\r\n") != std::string::npos);
+    file_assert(header.find("\r\n\r\n") != std::string::npos, "bad get_argument header input" );
     const static std::string endline = "\r\n";
     //header.append(endline);
     const static std::string colon = ": ";
-    assert(field.max_size() > field.size() + endline.size()+ colon.size());
+    file_assert(field.max_size() > field.size() + endline.size()+ colon.size(), "bad field size");
     field.insert(0,endline);
     field.append(colon);
     const auto n = header.find(field);
@@ -185,14 +185,14 @@ std::vector<std::string> get_method(const std::string& header) {
     const std::string endline = "\r\n";
     std::vector<std::string> out;
     const auto line_length = header.find(endline);
-    assert(line_length != std::string::npos);
+    file_assert(line_length != std::string::npos, "header did not contain an endline");
     
     size_t distance = 0;
     while(true) {
         const auto n = header.find(delimiter,distance);
 
         if (n == std::string::npos or n >= line_length) {
-            assert (distance < line_length);
+            file_assert (distance < line_length, "get method distance < line_length");
             const std::string ntoken = header.substr(distance, line_length-distance);
             if(ntoken != "") {
                 out.push_back(std::move(ntoken));

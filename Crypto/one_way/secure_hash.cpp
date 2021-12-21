@@ -14,32 +14,44 @@
 
 namespace fbw {
 
-uint32_t rotate_left(uint32_t a, uint32_t b) {
+uint32_t rotate_left(uint32_t a, uint32_t b) noexcept {
+    //logger << "rotate_left()" << std::endl;
+    file_assert(b < 32, "rotate_left");
     return (a << b) | (a >> (32-b));
 }
-uint32_t rotate_right(uint32_t a, uint32_t b) {
+uint32_t rotate_right(uint32_t a, uint32_t b) noexcept {
+    //logger << "rotate_right()" << std::endl;
+    
+    file_assert(b < 32, "rotate_right");
     return (a >> b) | (a << (32-b));
 }
-uint32_t CH(uint32_t x, uint32_t y, uint32_t z) {
+uint32_t CH(uint32_t x, uint32_t y, uint32_t z) noexcept {
+    //logger << "CH()" << std::endl;
     return (x & y) ^ (~x & z);
 }
-uint32_t MAJ(uint32_t x, uint32_t y, uint32_t z) {
+uint32_t MAJ(uint32_t x, uint32_t y, uint32_t z) noexcept {
+    //logger << "MAJ()" << std::endl;
     return (x & y) ^ (x & z) ^ (y & z);
 }
-uint32_t EP0(uint32_t x) {
+uint32_t EP0(uint32_t x) noexcept {
+    //logger << "EP0()" << std::endl;
     return rotate_right(x,2) ^ rotate_right(x,13) ^ rotate_right(x,22);
 }
-uint32_t EP1(uint32_t x) {
+uint32_t EP1(uint32_t x) noexcept {
+    //logger << "EP1()" << std::endl;
     return rotate_right(x,6) ^ rotate_right(x,11) ^ rotate_right(x,25);
 }
-uint32_t SIG0(uint32_t x) {
+uint32_t SIG0(uint32_t x) noexcept {
+    //logger << "SIG0()" << std::endl;
     return rotate_right(x,7) ^ rotate_right(x,18) ^ ((x) >> 3);
 }
-uint32_t SIG1(uint32_t x) {
+uint32_t SIG1(uint32_t x) noexcept {
+    //logger << "SIG1()" << std::endl;
     return rotate_right(x,17) ^ rotate_right(x,19) ^ ((x) >> 10);
 }
 
-constexpr double sq_root(double x) {
+constexpr double sq_root(double x) noexcept {
+    assert(x >= 0 );
     constexpr double small = 9*std::numeric_limits<double>::epsilon();
     double guess = 1;
     double diff = 1;
@@ -51,7 +63,8 @@ constexpr double sq_root(double x) {
     return guess;
 }
 
-constexpr double cube_root(double x) {
+constexpr double cube_root(double x) noexcept {
+    assert(x >= 0);
     constexpr double small = 9*std::numeric_limits<double>::epsilon();
     double guess = 1;
     double diff = 1;
@@ -63,8 +76,8 @@ constexpr double cube_root(double x) {
     return guess;
 }
 
-void sha256_transform(std::array<uint32_t,8>& state, const std::array<uint8_t,64> data)
-{
+void sha256_transform(std::array<uint32_t,8>& state, const std::array<uint8_t,64> data) noexcept {
+    //logger << "sha256_transform()" << std::endl;
     static constexpr std::array<uint32_t,64> k = [](){
         int idx = 0;
         std::array<uint32_t,64> kl {};
@@ -83,8 +96,6 @@ void sha256_transform(std::array<uint32_t,8>& state, const std::array<uint8_t,64
         }
         return kl;
     }();
-
-    
     std::array<uint32_t,64> m;
     for (int i = 0, j = 0; i < 16; ++i, j += 4) {
         m[i] = (data[j] << 24) | (data[j + 1] << 16) | (data[j + 2] << 8) | (data[j + 3]);
@@ -109,15 +120,18 @@ void sha256_transform(std::array<uint32_t,8>& state, const std::array<uint8_t,64
 }
 
 size_t sha256::get_block_size() const noexcept {
+    //logger << "sha256::get_block_size()" << std::endl;
     return block_size;
 }
 
 std::unique_ptr<::fbw::hash_base> sha256::clone() const {
+    //logger << "sha256::clone()" << std::endl;
     return std::make_unique<sha256>(*this);
 }
 
 
-sha256::sha256() : datalen(0),  bitlen(0), data(), done(false) {
+sha256::sha256() noexcept  : datalen(0),  bitlen(0), data(), done(false) {
+    //logger << "sha256::sha256()" << std::endl;
     constexpr auto state0 = [](){
         int idx = 0;
         std::array<uint32_t,8> kl {};
@@ -140,8 +154,11 @@ sha256::sha256() : datalen(0),  bitlen(0), data(), done(false) {
     state = state0;
 }
 
-sha256& sha256::update(const uint8_t* const begin, size_t size) {
+
+sha256& sha256::update(const uint8_t* const begin, size_t size) noexcept {
+    //logger << "sha256::update()" << std::endl;
     for (size_t i = 0; i < size; ++i) {
+        file_assert(datalen < data.size());
         data[datalen++] = begin[i];
         if (datalen == 64) {
             sha256_transform(state, data);
@@ -152,8 +169,24 @@ sha256& sha256::update(const uint8_t* const begin, size_t size) {
     return *this;
 }
 
-std::vector<uint8_t> sha256::hash() && {
-    assert(!done);
+sha256& sha256::update(const ustring& input) noexcept {
+    //logger << "sha256::update()" << std::endl;
+    for (size_t i = 0; i < input.size(); ++i) {
+        file_assert(datalen < data.size());
+        data[datalen++] = input[i];
+        if (datalen == 64) {
+            sha256_transform(state, data);
+            bitlen += 512;
+            datalen = 0;
+        }
+    }
+    return *this;
+}
+
+std::vector<uint8_t> sha256::hash() &&  noexcept {
+    //logger << "sha256::hash() && " << std::endl;
+    //assert(!done);
+    file_assert(!done, "sha256::hash() done");
     std::vector<uint8_t> hash;
     hash.resize(32);
     size_t dlen = datalen;
@@ -181,6 +214,7 @@ std::vector<uint8_t> sha256::hash() && {
 
 
 std::vector<uint8_t> sha256::hash() const & {
+    //logger << "sha256::hash() const &" << std::endl;
     sha256 other = *this;
     return std::move(other).hash();
 }
@@ -189,6 +223,7 @@ std::vector<uint8_t> sha256::hash() const & {
 
 
 sha1::sha1() : datalen(0), m_data({}), done(false) {
+    //logger << "sha1::sha1()" << std::endl;
     m_state[0] = 0x67452301;
     m_state[1] = 0xEFCDAB89;
     m_state[2] = 0x98BADCFE;
@@ -197,6 +232,7 @@ sha1::sha1() : datalen(0), m_data({}), done(false) {
 }
 
 uint32_t asval_unsafe32(const uint8_t * const s) {
+    //logger << "asval_unsafe32()" << std::endl;
     uint32_t len = 0;
     for(size_t i = 0; i < 4; i++) {
         len <<=8;
@@ -206,6 +242,7 @@ uint32_t asval_unsafe32(const uint8_t * const s) {
 }
 
 void sha1_transform(std::array<uint32_t,5>& state, std::array<uint8_t,64>& data) {
+    //logger << "sha1_transform()" << std::endl;
     std::array<uint32_t,80> w;
     for(int i = 0; i < 16; i++) {
         w[i] = asval_unsafe32(&data[i*4]);
@@ -256,8 +293,8 @@ void sha1_transform(std::array<uint32_t,5>& state, std::array<uint8_t,64>& data)
     data = {0};
 }
 
-sha1& sha1::update(const uint8_t* const begin, size_t size) {
-    // add bytes and then transform, remove bytes
+sha1& sha1::update(const uint8_t* const begin, size_t size) noexcept {
+    //logger << "sha1::update()" << std::endl;
     for(size_t i = 0; i < size; i++) {
         m_data[datalen % block_size] = begin[i];
         datalen++;
@@ -269,8 +306,21 @@ sha1& sha1::update(const uint8_t* const begin, size_t size) {
     return *this;
 }
 
-std::vector<uint8_t> sha1::hash() && {
-    assert(!done);
+sha1& sha1::update(const ustring& input) noexcept {
+    //logger << "sha1::update()" << std::endl;
+    for(size_t i = 0; i < input.size(); i++) {
+        m_data[datalen % block_size] = input[i];
+        datalen++;
+        if(datalen % block_size == 0) {
+            sha1_transform(m_state, m_data);
+        }
+    }
+    return *this;
+}
+
+std::vector<uint8_t> sha1::hash() && noexcept {
+    //logger << "sha1::hash() &&" << std::endl;
+    file_assert(!done, "sha1::hash() done");
     m_data[datalen%block_size] = 0x80;
     
     if(datalen%block_size >= 56) {
@@ -288,19 +338,23 @@ std::vector<uint8_t> sha1::hash() && {
 }
 
 std::vector<uint8_t> sha1::hash() const & {
+    //logger << "sha1::hash() const &" << std::endl;
     sha1 other = *this;
     return std::move(other).hash();
 }
 
 size_t sha1::get_block_size() const noexcept {
+    //logger << "sha1::get_block_size()" << std::endl;
     return block_size;
 }
 
 std::unique_ptr<hash_base> sha1::clone() const {
+    //logger << "sha1::clone()" << std::endl;
     return std::make_unique<sha1>(*this);
 }
 
 hmac::hmac(std::unique_ptr<hash_base> hasher, const uint8_t* key, size_t keylen) {
+    //logger << "hmac::hmac()" << std::endl;
     m_factory = std::move(hasher);
     m_hasher = m_factory->clone();
     KeyPrime.resize(m_factory->get_block_size());
@@ -311,28 +365,34 @@ hmac::hmac(std::unique_ptr<hash_base> hasher, const uint8_t* key, size_t keylen)
         std::copy_n(key, keylen, KeyPrime.begin());
     }
     assert(KeyPrime.size() == 64);
-    std::vector<uint8_t> ipadkey;
+    ustring ipadkey;
     ipadkey.resize(m_factory->get_block_size());
     assert(ipadkey.size() == 64);
     std::transform(KeyPrime.begin(), KeyPrime.end(), ipadkey.begin(), [](uint8_t c){return c ^ 0x36;});
-    m_hasher->update(&ipadkey[0],m_factory->get_block_size());
-    
-    
+    m_hasher->update(ipadkey);
 }
 
 
+hmac& hmac::update(const ustring& data) {
+    //logger << "hmac::update()" << std::endl;
+    m_hasher->update(data);
+    return *this;
+}
+
 hmac& hmac::update(const uint8_t* data, size_t datalen) {
+    //logger << "hmac::update()" << std::endl;
     m_hasher->update(data,datalen);
     return *this;
 }
 
 ustring hmac::hash() && {
-    //std::array<uint8_t, block_size> opadkey;
+    //logger << "hmac::hash()" << std::endl;
     std::vector<uint8_t> opadkey;
     opadkey.resize(m_factory->get_block_size());
-    assert(opadkey.size() == 64);
+    file_assert(opadkey.size() == 64);
     std::transform(KeyPrime.begin(), KeyPrime.end(), opadkey.begin(), [](uint8_t c){return c ^ 0x5c;});
     auto hsh = m_hasher->hash();
+    file_assert(!hsh.empty(), "empty hash");
     
     auto outsha = m_factory->clone();
     outsha->update(&opadkey[0], opadkey.size());

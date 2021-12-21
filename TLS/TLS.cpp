@@ -36,7 +36,7 @@
 #include "TLS_enums.hpp"
 #include "global.hpp"
 #include "keccak.hpp"
-#include "blockchain.hpp"
+#include "block_chain.hpp"
 #include "galois_counter.hpp"
 
 #include <iostream>
@@ -59,9 +59,11 @@ std::optional<tls_record> try_extract_record(ustring& input);
 
 // handler
 status_message TLS::handle(ustring input) noexcept {
+    logger << "TLS::handle()" <<std::endl;
     m_input.append(input);
-    // for now concatenate a bunch of records, later can implement sending them separately
-    // refactor as a generator later
+    
+    file_assert(input.size() < 20000, "TLS handle input size too much");
+    
     status_message output;
     output.m_status = status::read_only;
     
@@ -87,6 +89,7 @@ status_message TLS::handle(ustring input) noexcept {
 }
 
 void TLS::handle_record(tls_record record, status_message& output) {
+    logger << "TLS::handle_record()" <<std::endl;
     if (record.major_version != 3) {
         throw ssl_error("unsupported version"); // learn ssl errors
     }
@@ -97,7 +100,18 @@ void TLS::handle_record(tls_record record, status_message& output) {
     if (handshake_done) {
         record = cipher_context->decrypt(std::move(record));
     }
+    /*
     
+    logger <<   "++++++++++++++++++++++\n";
+    logger << "decrypted TLS:\n";
+    logger << unsigned(record.type) << " " << unsigned(record.major_version) << " "
+            << unsigned(record.minor_version) << " " << record.contents.size() << "\n";
+    
+    for(auto c : record.contents) {
+        logger << std::hex << int(unsigned(c)) << " ";
+    }
+    logger << "\n++++++++++++++++++++++" << std::endl;
+    */
     try {
         switch(record.type) {
             case static_cast<uint8_t>(ContentType::ChangeCipherSpec):
@@ -125,6 +139,7 @@ void TLS::handle_record(tls_record record, status_message& output) {
 }
  
 void TLS::client_handshake(ustring handshake_record, status_message& output) {
+    logger << "TLS::client_handshake()" <<std::endl;
     switch (handshake_record.at(0)) {
         case static_cast<uint8_t>(HandshakeType::hello_request):
             throw ssl_error("hello_request not supported");
@@ -145,8 +160,9 @@ void TLS::client_handshake(ustring handshake_record, status_message& output) {
 
 
 void TLS::handle_client_hello(const ustring& hello, status_message& output) {
+    logger << "TLS::handle_client_hello()" <<std::endl;
     // handshake header
-    assert(hello.at(0) == 1);
+    file_assert(hello.at(0) == 1, "handle_client_hello");
 
     
     size_t len = safe_asval(hello,1,3);
@@ -196,7 +212,7 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
         throw ssl_error("bad extension");
     }
 
-    handshake_hasher->update(hello.data(), hello.size());
+    handshake_hasher->update(hello);
     
     output.m_response.append(server_hello().serialise());
     output.m_response.append(server_certificate().serialise());
@@ -205,6 +221,7 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
 }
 
 tls_record TLS::server_hello() {
+    logger << "TLS::server_hello()" << std::endl;
     tls_record hello_record;
     hello_record.type = static_cast<uint8_t>(ContentType::Handshake);
     hello_record.major_version = 3;
@@ -223,11 +240,12 @@ tls_record TLS::server_hello() {
     hello_record.contents.append({0x00, 0x05, 0xff, 0x01, 0x00, 0x01, 0x00}); // extensions
     write_int(hello_record.contents.size()-4, &hello_record.contents[1], 3);
 
-    handshake_hasher->update(hello_record.contents.data(), hello_record.contents.size());
+    handshake_hasher->update(hello_record.contents);
     return hello_record;
 }
 
 tls_record TLS::server_certificate(){
+    logger << "TLS::server_certificate()" << std::endl;
     tls_record certificate_record;
     certificate_record.type = static_cast<uint8_t>(ContentType::Handshake);
     certificate_record.major_version = 3;
@@ -247,11 +265,12 @@ tls_record TLS::server_certificate(){
     write_int(certificate_record.contents.size()-4, &certificate_record.contents[1], 3);
     write_int(certificate_record.contents.size()-7, &certificate_record.contents[4], 3);
 
-    handshake_hasher->update(certificate_record.contents.data(), certificate_record.contents.size());
+    handshake_hasher->update(certificate_record.contents);
     return certificate_record;
 }
 
 tls_record TLS::server_key_exchange(){
+    logger << "TLS::server_key_exchange()" << std::endl;
     randomgen.randgen(server_private_key_ephem.begin(), server_private_key_ephem.size());
     std::array<uint8_t,32> privrev;
     std::reverse_copy(server_private_key_ephem.begin(), server_private_key_ephem.end(), privrev.begin());
@@ -279,7 +298,7 @@ tls_record TLS::server_key_exchange(){
     hashctx->update(signed_empheral_key.data(), signed_empheral_key.size());
 
     auto signature_digest_vec = hashctx->hash();
-    assert(signature_digest_vec.size() == 32);
+    file_assert(signature_digest_vec.size() == 32, "signature_digest_vec.size() == 32");
     std::array<uint8_t,32> signature_digest;
     std::copy(signature_digest_vec.begin(), signature_digest_vec.end(), signature_digest.begin());
     
@@ -298,27 +317,33 @@ tls_record TLS::server_key_exchange(){
     record.contents.append(signature);
 
     write_int(record.contents.size()-4, &record.contents[1], 3);
-    handshake_hasher->update(record.contents.data(), record.contents.size()); // not hashing correctly.
+    handshake_hasher->update(record.contents.data(), record.contents.size());
     return record;
 }
 
 tls_record TLS::server_hello_done() {
+    logger << "TLS::server_hello_done()" << std::endl;
     tls_record record;
     record.type = static_cast<uint8_t>(ContentType::Handshake);
     record.major_version = 3;
     record.minor_version = 3;
     record.contents = { static_cast<uint8_t>(HandshakeType::server_hello_done), 0x00, 0x00, 0x00 };
-    handshake_hasher->update(record.contents.data(), record.contents.size());
+    handshake_hasher->update(record.contents);
     return record;
 }
 
 void TLS::handle_client_key_exchange(const ustring& key_exchange) {
-    assert(key_exchange[0] == static_cast<uint8_t>(HandshakeType::client_key_exchange));
+    logger << "TLS::handle_client_key_exchange()" << std::endl;
+    file_assert(key_exchange.at(0) == static_cast<uint8_t>(HandshakeType::client_key_exchange), "client key bad");
     
     const size_t len = safe_asval(key_exchange,1,3);
     const size_t keylen = safe_asval(key_exchange,4,1);
     if(len+4 != key_exchange.size() or len != keylen + 1) {
         throw ssl_error("bad key exchange");
+    }
+    
+    if(key_exchange.size() < 37) {
+        throw ssl_error("bad public key");
     }
     std::copy(&key_exchange[5], &key_exchange[37], client_public_key.begin());
     master_secret = make_master_secret(server_private_key_ephem, client_public_key, m_server_random, m_client_random);
@@ -326,7 +351,7 @@ void TLS::handle_client_key_exchange(const ustring& key_exchange) {
     // AES_256_CBC_SHA256 has the largest amount of material at 128 bytes
     ustring key_material = expand_master(master_secret, m_server_random, m_client_random, 128);
     cipher_context->set_key_material(key_material);
-    handshake_hasher->update(key_exchange.data(), key_exchange.size());
+    handshake_hasher->update(key_exchange);
 }
 
 void TLS::client_change_cipher_spec(const ustring& change_message) {
@@ -338,8 +363,8 @@ void TLS::client_change_cipher_spec(const ustring& change_message) {
 
 
 void TLS::client_handshake_finished(const ustring& finish, status_message& output) {
-
-    assert(finish[0] == static_cast<uint8_t>(HandshakeType::finished));
+    logger << "TLS::client_handshake_finished()" << std::endl;
+    file_assert(finish.at(0) == static_cast<uint8_t>(HandshakeType::finished));
     const size_t len = safe_asval(finish,1,3);
     if(len != 12) {
         throw ssl_error("bad verification");
@@ -356,16 +381,16 @@ void TLS::client_handshake_finished(const ustring& finish, status_message& outpu
     
     auto ctx2 = ctx;
     auto a1 = ctx2
-        .update(seed.data(), seed.size())
+        .update(seed)
         .hash();
     auto p1 = (ctx2 = ctx)
-        .update(a1.data(), a1.size())
-        .update(seed.data(), seed.size())
+        .update(a1)
+        .update(seed)
         .hash();
     
     bool eq = true;
     for(int i = 0; i < 12; i ++) {
-        if(finish[i+4] != p1[i]) {
+        if(finish.at(i+4) != p1.at(i)) {
             eq = false;
         }
     }
@@ -373,18 +398,20 @@ void TLS::client_handshake_finished(const ustring& finish, status_message& outpu
         throw ssl_error("handshake verification failed");
     }
 
-    handshake_hasher->update(finish.data(), finish.size());
+    handshake_hasher->update(finish);
     server_change_cipher_spec(output);
     server_handshake_finished(output);
 }
 
 void TLS::server_change_cipher_spec(status_message& output) {
+    logger << "TLS::server_change_cipher_spec()" << std::endl;
     ustring record ({static_cast<uint8_t>(ContentType::ChangeCipherSpec),
         0x03, 0x03, 0x00, 0x01, static_cast<uint8_t>(ChangeCipherSpec::change_cipher_spec)});
     output.m_response.append(record);
 }
 
 void TLS::server_handshake_finished(status_message& output) {
+    logger << "TLS::server_handshake_finished()" << std::endl;
     tls_record out;
     out.type = static_cast<uint8_t>(ContentType::Handshake);
     out.major_version = 3;
@@ -398,21 +425,22 @@ void TLS::server_handshake_finished(status_message& output) {
     
     auto local_hasher = handshake_hasher->clone(); // the others?
     auto handshake_hash = local_hasher->hash();
-    assert(handshake_hash.size() == 32);
+    file_assert(handshake_hash.size() == 32, "handshake hash size bad");
     seed.append(handshake_hash.begin(), handshake_hash.end());
 
     const auto ctx = hmac(hasher_factory->clone(), &master_secret[0], master_secret.size());
     auto ctx2 = ctx;
     
     auto a1 = (ctx2 = ctx)
-        .update(seed.data(), seed.size())
+        .update(seed)
         .hash();
 
     auto p1 = (ctx2 = ctx)
-        .update(a1.data(), a1.size())
-        .update(seed.data(), seed.size())
+        .update(a1)
+        .update(seed)
         .hash();
-
+    
+    file_assert(p1.size() >= 12, "bad hash");
     out.contents.append(&p1[0], &p1[12]);
 
     if(handshake_done) {
@@ -424,6 +452,7 @@ void TLS::server_handshake_finished(status_message& output) {
 }
 
 void TLS::client_application_data(const ustring& application_data, status_message& output) {
+    logger << "TLS::client_application_data()" << std::endl;
     const auto app_out = next->handle(application_data);
     output.m_status = app_out.m_status;
     int record_size = 1;
@@ -446,6 +475,7 @@ void TLS::client_application_data(const ustring& application_data, status_messag
 }
 
 void TLS::tls_notify_close(status_message& output) {
+    logger << "TLS::tls_notify_close()" << std::endl;
     tls_record close_record;
     close_record.type = static_cast<uint8_t>(ContentType::Alert);
     close_record.major_version = 3;
@@ -461,6 +491,7 @@ void TLS::tls_notify_close(status_message& output) {
 
 
 bool TLS::client_alert(const ustring& alert_message, status_message& output) {
+    logger << "TLS::client_alert()" << std::endl;
     if(alert_message.size() != 2) {
         throw ssl_error("bad alert");
     }
@@ -484,6 +515,7 @@ bool TLS::client_alert(const ustring& alert_message, status_message& output) {
 
 
 void TLS::client_heartbeat(const ustring& heartbeat_message, status_message& output) {
+    logger << "TLS::client_heartbeat()" << std::endl;
     if(heartbeat_message.size() != 1 or heartbeat_message[0] != 0x01) {
         throw ssl_error("bad heartbeat");
     }
@@ -505,6 +537,7 @@ std::array<uint8_t,48> TLS::make_master_secret(std::array<uint8_t,32> server_pri
                                                 std::array<uint8_t,32> client_public,
                                                 std::array<uint8_t,32> server_random,
                                                 std::array<uint8_t,32> client_random) const {
+    logger << "TLS::make_master_secret()" << std::endl;
     std::reverse(server_private.begin(), server_private.end());
     std::reverse(client_public.begin(), client_public.end());
     auto premaster_secret = fbw::curve25519::multiply(server_private, client_public);
@@ -520,19 +553,19 @@ std::array<uint8_t,48> TLS::make_master_secret(std::array<uint8_t,32> server_pri
     const auto ctx = hmac(hasher_factory->clone(), premaster_secret.begin(), premaster_secret.size());
     auto ctx2 = ctx;
     auto a1 = (ctx2 = ctx)
-                    .update(seed.data(), seed.size())
+                    .update(seed)
                     .hash();
-    assert(a1.size() == 32);
+    file_assert(a1.size() == 32, "master_secret a1.size()");
     auto a2 = (ctx2 = ctx)
-                    .update(&*a1.begin(), a1.size())
+                    .update(a1)
                     .hash();
     auto p1 = (ctx2 = ctx)
-                    .update(&*a1.begin(), a1.size())
-                    .update(seed.data(), seed.size())
+                    .update(a1)
+                    .update(seed)
                     .hash();
     auto p2 = (ctx2 = ctx)
-                    .update(&*a2.begin(), a2.size())
-                    .update(seed.data(), seed.size())
+                    .update(a2)
+                    .update(seed)
                     .hash();
 
     std::array<uint8_t,48> master_secret;
@@ -544,6 +577,7 @@ std::array<uint8_t,48> TLS::make_master_secret(std::array<uint8_t,32> server_pri
 
 
 unsigned short TLS::cipher_choice(const ustring& s) {
+    logger << "TLS::cipher_choice()" << std::endl;
     for(size_t i = 0; i < s.size(); i += 2) {
         uint16_t x = safe_asval(s, i, 2);
         
@@ -582,15 +616,15 @@ ustring TLS::expand_master(const std::array<unsigned char,48>& master,
     auto ctx2 = ctx;
     while(output.size() < len) {
         ctx2 = ctx;
-        ctx2.update((uint8_t*)&a[0], a.size());
+        ctx2.update(a);
         auto ou = ctx2.hash();
         a.clear();
-        a.append(&ou[0], ou.size());
+        a.append(ou);
         ctx2 = ctx;
-        ctx2.update((uint8_t*)&a[0], a.size())
-            .update((uint8_t*)&useed[0], useed.size());
+        ctx2.update(a)
+            .update(useed);
         ou = ctx2.hash();
-        output.append(&ou[0],ou.size());
+        output.append(ou);
     }
     output.resize(len);
     return output;

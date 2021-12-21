@@ -5,8 +5,10 @@
 //
 
 
-#include "server.hpp"
 
+
+#include "server.hpp"
+#include "global.hpp"
 
 #include <new>
 #include <iostream>
@@ -15,32 +17,39 @@
 #include <cstdint>
 #include <string>
 #include <array>
+#include <fstream>
+
+#include "galois_counter.hpp"
+
+
+// look at I/O for requesting a PDF to understand why it is occasionally so slow
 
 int main() {
-    {
-        std::ifstream t(fbw::key_file);
-        if(t.fail()) {
-           std::cout << "no key" << std::endl;
-           std::terminate();
-        }
-        std::ifstream u(fbw::certificate_file);
-        if(u.fail()) {
-            std::cout << "no certificate" << std::endl;
-            std::terminate();
-        }
-        std::ifstream v(fbw::rootdir);
-        if(v.fail()) {
-            std::cout << "no webpages" << std::endl;
-            std::terminate();
-        }
-        std::ifstream w(fbw::MIME_folder);
-        if(w.fail()) {
-            std::cout << "no MIME" << std::endl;
-            std::terminate();
-        }
-    }
+    file_assert(true, "main failed...");
+    //fbw::aes::test();
+    //exit(1);
+    
+    logger << "start main()" << std::endl;
 
     try {
+            {
+                std::ifstream t(fbw::key_file);
+                if(t.fail()) {
+                    throw std::runtime_error("no key");
+                }
+                std::ifstream u(fbw::certificate_file);
+                if(u.fail()) {
+                    throw std::runtime_error("no certificate");
+                }
+                std::ifstream v(fbw::rootdir);
+                if(v.fail()) {
+                    throw std::runtime_error("no root directory");
+                }
+                std::ifstream w(fbw::MIME_folder);
+                if(w.fail()) {
+                    throw std::runtime_error("no MIME");
+                }
+            }
         
         fbw::server webserver { "https" };
         while(true) {
@@ -59,4 +68,5 @@ int main() {
     } catch(...) {
         std::cerr << "unexpected server close\n" << std::endl;
     }
+    logger << "end main()" << std::endl;
 }

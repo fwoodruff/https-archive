@@ -45,6 +45,8 @@ class server {
     void handle_event(fpollfd, tp) noexcept;
     
     std::string m_service;
+    
+    void sanity(const std::vector<fpollfd> events);
 
     
 public:

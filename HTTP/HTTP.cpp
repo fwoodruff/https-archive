@@ -32,7 +32,7 @@ status_message HTTP::handle(ustring uinput) noexcept {
         //std::cout << header;
         if(!header.empty()) {
             const auto [delimiter, size] = body_size(header);
-            assert(delimiter == "" or size == 0);
+            file_assert(delimiter == "" or size == 0, "delimiter == "" or size == 0");
             std::string body;
             if(delimiter != "") {
                 body += extract(input, delimiter);
@@ -44,13 +44,22 @@ status_message HTTP::handle(ustring uinput) noexcept {
                     return {to_unsigned(""), status::read_only};
                 }
             }
+            logger << "-----------------------------\n";
+            logger << "Client header:" << std::endl;
+            logger << header << std::endl;
+            logger << "body size extracted: " << body.size() << std::endl;
+            logger << "-----------------------------\n";
+            /*
             std::cout << "body size extracted: " << body.size() << std::endl;
             std::cout << "HTTP CLIENT: \n";
             std::cout << header << body;
+            */
             std::string response = respond(std::move(header), std::move(body));
+            /*
             std::cout << "HTTP SERVER: \n";
             std::cout << response;
             header = "";
+             */
             output.m_response = to_unsigned(response);
             output.m_status = status::read_only;
         }

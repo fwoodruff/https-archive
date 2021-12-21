@@ -8,6 +8,8 @@
 #ifndef bignum_hpp
 #define bignum_hpp
 
+
+
 #include <cassert>
 #include <array>
 #include <string>
@@ -95,6 +97,7 @@ public:
     }
     constexpr uVar() noexcept :v ({0}) {}
     constexpr uVar(std::string_view s) noexcept {
+        assert(s.size() >= 2);
         assert(s[0]== '0' and s[1]=='x');
         assert(s.size()-2 <= INTBITS);
         constexpr int hexbits = 4;

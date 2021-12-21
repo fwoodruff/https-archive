@@ -5,8 +5,8 @@
 //  Created by Frederick Benjamin Woodruff on 24/07/2021.
 //
 
-#ifndef https_connection_hpp
-#define https_connection_hpp
+#ifndef http_hpp
+#define http_hpp
 
 #include "receiver.hpp"
 
@@ -17,8 +17,6 @@ namespace fbw {
 /*
  Handles HTTP streams
  */
-
-// rename to just http
 class HTTP final : public receiver {
     static constexpr long max_bytes_queued = 1000000;
     
@@ -32,4 +30,4 @@ public:
 
 } // namespace fbw
 
-#endif /* http_connection_hpp */
+#endif /* http_hpp */

@@ -87,7 +87,7 @@ static void inc32(aes_block& block) {
     val = AES_GET_BE32(&block[AES_BLOCK_SIZE - 4]);
     val++;
     AES_PUT_BE32(&block[AES_BLOCK_SIZE - 4], val);
-    assert (val != aes_uint(-1));
+    file_assert(val != aes_uint(-1), "2^64 increments should be infeasible");
 }
 
 
@@ -312,9 +312,7 @@ ustring aes_gcm_ae(const roundkey& rk, const ustring& iv,
 
 ustring aes_gcm_ad(roundkey rk, ustring iv,
            const ustring& crypt,
-                   const ustring& aad, const ustring& tag = {})
-{
-    
+                   const ustring& aad, const ustring& tag = {}) {
     
     aes_block H;
     
@@ -323,17 +321,11 @@ ustring aes_gcm_ad(roundkey rk, ustring iv,
     
     H = aes_encrypt(H, rk);
 
-
-
     auto J0 = aes_gcm_prepare_j0(iv, H);
-
     // P = GCTR_K(inc_32(J_0), C)
     plain.resize(crypt.size());
-    
     aes_gcm_gctr(rk, J0, crypt.data(), crypt.size(), plain.data());
-
     ustring S = aes_gcm_ghash(H, aad, crypt.data(), crypt.size());
-    
 
     // T' = MSB_t(GCTR_K(J_0, S))
     //aes_gctr(aes, J0, S, sizeof(S), T);
@@ -352,7 +344,7 @@ ustring aes_gcm_ad(roundkey rk, ustring iv,
 
 void aes_gmac(roundkey key, const ustring& iv,
          const ustring& aad, ustring& tag) {
-    assert(false);
+    file_assert(false, "function should be inaccessible");
     aes_gcm_ae(key, iv, {}, aad, tag);
 }
 
@@ -436,6 +428,14 @@ tls_record AES_128_GCM_SHA256::decrypt(tls_record record) {
 
 
 
+void test() {/*
+    std::cout << "hello world\n";
+    
+    static ustring DUMMY_TAG;
+    ustring aes_gcm_ae(const roundkey& rk, const ustring& iv,
+               const ustring& plain,
+               const ustring& aad, ustring& tag = DUMMY_TAG)
+*/}
 
 
 

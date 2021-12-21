@@ -57,6 +57,7 @@ in_port_t get_in_port(struct sockaddr *sa) {
  Opens a server socket
  */
 server_socket get_listener_socket(std::string service) {
+    logger << "get_listener_socket()" << std::endl;
     server_socket listener;
     struct addrinfo hints, *ai, *p;
 
@@ -96,12 +97,9 @@ server_socket get_listener_socket(std::string service) {
  The service is used to infer the correct port number
  */
 server::server(std::string service) {
+    logger << "server::server()" << std::endl;
     m_sock = get_listener_socket(service.c_str());
-    
-    
-
     m_poller.add_fd(m_sock, connections.end(), true, false);
-    
     m_service = service;
     
     
@@ -133,15 +131,17 @@ server::server(std::string service) {
  This will involve an LRU cache of session keys, but where no IP is allowed multiple entries
  */
 void server::serve_some() {
+    logger << "server::serve_some()" << std::endl;
+    
     std::cout << "num connections: " << connections.size() << std::endl;
     const auto loop_time = steady_clock::now();
     bool can_accept = connections.size() < MAX_SOCKETS - 11;
     m_poller.mod_fd(m_sock, connections.end(), can_accept, false);
-    
-    
-    
+
     
     const auto events = m_poller.get_events(!connections.empty());
+    
+    sanity(events);
     
     for (const auto& event : events) {
         if(event.node == connections.end()) {
@@ -154,6 +154,7 @@ void server::serve_some() {
             if((*event.node)->handle_connection(event, loop_time)) {
                 connections.erase(event.node);
             }
+            
         }
     }
     const auto sentinel_stale = find_if_not(connections.crbegin(), connections.crend(),
@@ -166,6 +167,7 @@ void server::serve_some() {
  Add new connections to the connection list
  */
 void server::accept_connection(tp loop_time) {
+    logger << "server::accept_connection()" << std::endl;
     clist single_node_holder;
     
     single_node_holder.push_back( std::make_unique<connection>() );
@@ -177,7 +179,7 @@ void server::accept_connection(tp loop_time) {
         node->push_receiver(std::make_unique<HTTP>());
         node->push_receiver(std::make_unique<TLS>());
     } else {
-        assert(false);
+        file_assert("bad service");
     }
 
     node->m_time_set = loop_time;
@@ -194,7 +196,26 @@ void server::accept_connection(tp loop_time) {
 }
 
 server::~server() {
+    logger << "~server()" << std::endl;
+}
 
+void server::sanity(const std::vector<fpollfd> events) {
+    for(auto it = connections.begin(); it != connections.end(); it++) {}
+    logger << "connections not corrupted" << std::endl;
+    
+    for(const auto& event : events) {
+        if(event.node == connections.end()) {
+            continue;
+        }
+        file_assert(event.read or event.write, "polled event neither for read nor write");
+        for(auto it = connections.begin(); it != connections.end(); it++) {
+            if(event.node == it) {
+                break;
+            }
+            file_assert(false, "unknown event polled");
+        }
+    }
+    logger << "connections OK" << std::endl;
 }
 
 } // namespace fbw

@@ -12,10 +12,11 @@
 
 #include <string>
 #include <array>
+#include <iostream>
 #include <fstream>
 
 
-
+extern std::fstream logger;
 
 namespace fbw {
 
@@ -27,7 +28,8 @@ extern const std::string rootdir;
 extern const ssize_t MAX_SOCKETS;
 extern const int timeoutms;
 extern const ssize_t BUFFER_SIZE;
-//extern std::fstream logout;
+
+
 
 
 
@@ -35,6 +37,7 @@ extern const ssize_t BUFFER_SIZE;
 
 using ustring = std::basic_string<uint8_t>;
 [[nodiscard]] inline uint64_t safe_asval(const ustring& s, size_t idx, size_t bytes) {
+    //logger << "safe_asval()" << std::endl;
     uint64_t len = 0;
     for(size_t i = idx; i < idx + bytes; i ++) {
         len <<=8;
@@ -44,6 +47,7 @@ using ustring = std::basic_string<uint8_t>;
 }
 
 inline void write_int(uint64_t x, uint8_t* const s, short n) noexcept {
+    //logger << "write_int()" << std::endl;
     assert(x < (1ull << (n*8)) or n == sizeof(uint64_t));
     for(short i = n-1; i >= 0; i--) {
         s[i] = static_cast<uint8_t>(x) & 0xffU;
@@ -53,14 +57,10 @@ inline void write_int(uint64_t x, uint8_t* const s, short n) noexcept {
 
 
 
-/*
-inline void file_assert(bool assertion, const std::string_view& message) {
-    if(!assertion) {
-        logout << message;
-        std::terminate();
-    }
-}
-*/
+
+
+
+
 
 struct tls_record {
     ustring contents;
@@ -100,6 +100,16 @@ class ssl_close_signal : public std::runtime_error {
 
 } // namespace fbw
 
+
+inline void file_assert(bool assertion, const std::string_view& message = "") {
+#ifndef NDEBUG
+    if(!assertion) {
+        logger << message;
+        logger.close();
+        std::terminate();
+    }
+#endif
+}
 
 
 #endif /* glob_hpp */

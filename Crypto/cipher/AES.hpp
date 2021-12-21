@@ -8,7 +8,7 @@
 #ifndef AES_hpp
 #define AES_hpp
 
-#include "global.hpp"
+
 
 #include <stdio.h>
 #include <array>
