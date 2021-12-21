@@ -1,0 +1,13 @@
+
+CXX = g++
+CXXFLAGS = -std=gnu++17 -O2 -march=native -Wno-psabi
+LDFLAGS := #
+SOURCE := $(shell find . -name \*\.cpp)
+OBJECTS := ${SOURCE:.cpp=.o}
+DEPENDS = ${OBJECTS:.o=.d}    # substitutes ".o" with ".d"
+EXEC = flylikeabird                # executable name
+
+${EXEC} : ${OBJECTS}          # link step
+        ${CXX} ${OBJECTS} ${LDFLAGS} -o ${EXEC}
+
+-include ${DEPENDS}           # copies files x.d, y.d, z.d (if they exist)

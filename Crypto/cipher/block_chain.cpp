@@ -46,15 +46,16 @@ ustring pad_message(ustring message) {
     assert(padmax > blocksize and padmax % blocksize == 0);
     
     // randomises the padding length
-    const auto min_padded_message_size = ((message.size() / blocksize)+1)* blocksize;
-    const auto max_padded_message_size = ((message.size() / padmax)+1)* padmax;
+    const auto min_padded_message_size = ((message.size() / blocksize)+1)* blocksize; //272
+    const auto max_padded_message_size = ((message.size() / padmax)+1)* padmax; // 512
     auto randval = randomgen.randgen64();
     const auto padded_message_size = min_padded_message_size +
                 (randval*blocksize) % (blocksize+max_padded_message_size-min_padded_message_size);
 
     const auto padding_checked = padded_message_size - message.size();
     assert(padded_message_size > message.size());
-    assert(padding_checked < padmax);
+    //[[Why_did_this_fire]];
+    assert(padding_checked < padmax); // this fired
     const uint8_t padding = padding_checked;
     message.append(padding, padding-1);
     assert(message.size() % blocksize == 0);
