@@ -43,8 +43,8 @@ class AES_128_GCM_SHA256 : public cipher_base {
     roundkey client_write_round_keys;
     roundkey server_write_round_keys;
     
-    ustring client_explicit_write_IV;
-    ustring server_explicit_write_IV;
+    ustring client_implicit_write_IV;
+    ustring server_implicit_write_IV;
     
     uint64_t seqno_server = 0;
     uint64_t seqno_client = 0;
@@ -56,9 +56,10 @@ public:
     tls_record encrypt(tls_record record) override;
     tls_record decrypt(tls_record record) override;
     
+    static void test();
 };
  
-void test();
+
 
 } // namespace fbw
 
