@@ -23,7 +23,7 @@ namespace fbw {
 /*
  Creates an HTTP response from an HTTP request
  */
-std::string respond(std::string header, std::string body) {
+std::string respond(const std::string& rootdirectory, std::string header, std::string body) {
     const auto method = get_method(header);
     if(method.size()<2) {
         throw http_error("400 Bad Request");
@@ -35,7 +35,7 @@ std::string respond(std::string header, std::string body) {
     }
     
     if(method[0] == "GET") {
-        const std::string out = file_to_http(rootdir, filename);
+        const std::string out = file_to_http(rootdirectory, filename);
         return out;
     }
     if(method[0] == "POST") {

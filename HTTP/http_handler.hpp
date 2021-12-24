@@ -13,8 +13,10 @@ namespace fbw {
 /*
  Functions for handing HTTP strings
  */
-std::string respond(std::string header, std::string body);
-std::string file_to_http(const std::string& rootdir, std::string filename);
+
+
+std::string respond(const std::string& rootdirectory, std::string header, std::string body);
+std::string file_to_http(const std::string& rootdirectory, std::string filename);
 void handle_POST(std::string header, std::string body);
 
 } // namespace fbw

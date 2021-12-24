@@ -15,6 +15,10 @@
 
 namespace fbw {
 
+HTTP::HTTP(std::string folder) : m_folder(folder) {}
+
+
+
 /*
  This gets called when there is data in https_connection::input to handle
  */
@@ -29,7 +33,7 @@ status_message HTTP::handle(ustring uinput) noexcept {
         if(header.empty()) {
             header = extract(input, "\r\n\r\n");
         }
-        //std::cout << header;
+        
         if(!header.empty()) {
             const auto [delimiter, size] = body_size(header);
             file_assert(delimiter == "" or size == 0, "delimiter == "" or size == 0");
@@ -49,22 +53,14 @@ status_message HTTP::handle(ustring uinput) noexcept {
             logger << header << std::endl;
             logger << "body size extracted: " << body.size() << std::endl;
             logger << "-----------------------------\n";
-            /*
-            std::cout << "body size extracted: " << body.size() << std::endl;
-            std::cout << "HTTP CLIENT: \n";
-            std::cout << header << body;
-            */
-            std::string response = respond(std::move(header), std::move(body));
-            /*
-            std::cout << "HTTP SERVER: \n";
-            std::cout << response;
-            header = "";
-             */
+            
+            std::string response = respond(m_folder, std::move(header), std::move(body));
+            
             output.m_response = to_unsigned(response);
             output.m_status = status::read_only;
         }
-    } catch(http_error e) {
-        std::cout << e.what() << std::endl;
+    } catch(const http_error& e) {
+        logger << e.what() << std::endl;
         header = "";
         output.m_response = to_unsigned(std::string(e.what()) + "\r\n");
         output.m_status = status::closing;
@@ -72,15 +68,5 @@ status_message HTTP::handle(ustring uinput) noexcept {
     return output;
 }
 
-/*
- TCP layer shouldn't have to worry about TLS or HTTP layer
- but needs to allocate the space for it
- */
-
-/*
-std::unique_ptr<connection_base> http_connection::ctor_my() {
-    return std::make_unique<https_connection>();
-}
- */
  
 };// namespace fbw

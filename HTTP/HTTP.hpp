@@ -23,11 +23,16 @@ class HTTP final : public receiver {
     std::string input;
     std::string header;
 
+    std::string m_folder;
 public:
     status_message handle(ustring) noexcept final override;
-
+    HTTP(std::string folder);
+    
 };
 
-} // namespace fbw
 
+
+
+} // namespace fbw
+ 
 #endif /* http_hpp */
