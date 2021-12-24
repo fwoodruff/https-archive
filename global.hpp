@@ -9,7 +9,7 @@
 #define glob_hpp
 
 
-
+#include <cassert>
 #include <string>
 #include <array>
 #include <iostream>
@@ -80,21 +80,18 @@ class ssl_error : public std::runtime_error {
     using std::runtime_error::runtime_error;
 };
 
-class ssl_close_signal : public std::runtime_error {
-    using std::runtime_error::runtime_error;
-};
 
 
 
 [[nodiscard]] inline ustring to_unsigned(std::string s) {
     ustring out;
-    out.append(s.begin(), s.end());
+    out.append(s.cbegin(), s.cend());
     return out;
 }
 
 [[nodiscard]] inline std::string to_signed(ustring s) {
     std::string out;
-    out.append(s.begin(), s.end());
+    out.append(s.cbegin(), s.cend());
     return out;
 }
 
@@ -104,7 +101,7 @@ class ssl_close_signal : public std::runtime_error {
 inline void file_assert(bool assertion, const std::string_view& message = "") {
 #ifndef NDEBUG
     if(!assertion) {
-        logger << message;
+        logger << message << std::endl;
         logger.close();
         std::terminate();
     }
