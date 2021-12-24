@@ -18,18 +18,20 @@
 namespace fbw::aes {
 
 class AES_CBC_SHA : public cipher_base {
+public: // temp
     roundkey server_write_round_keys;
     roundkey client_write_round_keys;
     std::array<uint8_t, 20> server_MAC_key;
     std::array<uint8_t, 20> client_MAC_key;
 
     size_t m_key_size;
-    
-    uint64_t seqno_server = 0;
-    uint64_t seqno_client = 0;
+    uint64_t seqno_server;
+    uint64_t seqno_client;
     
 public:
     AES_CBC_SHA(size_t key_size);
+    
+    
     
     void set_key_material(ustring material) override;
     tls_record encrypt(tls_record record) override;
