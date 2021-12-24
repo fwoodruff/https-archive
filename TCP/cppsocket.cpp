@@ -35,7 +35,7 @@ int cppsocket::get_native() const {
 cppsocket::~cppsocket() {
     logger << "cppsocket::~cppsocket()" << std::endl;
     if(m_fd != -1) {
-        std::cout << "closing socketfd: " << m_fd << std::endl;
+        logger << "closing socketfd: " << m_fd << std::endl;
         ::close(m_fd);
     }
 };
@@ -65,39 +65,57 @@ cppsocket& cppsocket::operator=(cppsocket&& other) noexcept {
 }
        
 client_socket server_socket::accept(sockaddr * addr, socklen_t *addrlen) const {
-    assert(m_fd != -1);
+    file_assert(m_fd != -1, "bad accept socket");
     const fd_t sock = ::accept(m_fd, addr, addrlen);
-    std::cout << "accepting socketfd: " << sock << std::endl;
+    logger << "accepting socketfd: " << sock << std::endl;
     if(sock == -1) {
-        assert(errno != EBADF);
-        assert(errno != EFAULT);
-        assert(errno != ENOTSOCK);
-        assert(errno != EOPNOTSUPP);
-        assert(errno != EINVAL);
+        static_assert(EAGAIN == EWOULDBLOCK, "bad errno constants");
+        switch (errno) {
+            //case EAGAIN:
+            case EWOULDBLOCK:
+            case EINTR:
+            case ECONNABORTED:
+            case EPERM:
+                break;
+            case EBADF:
+            case EFAULT:
+            case EINVAL:
+            case EMFILE:
+            case ENFILE:
+            case ENOBUFS:
+            case ENOMEM:
+            case ENOTSOCK:
+            case EOPNOTSUPP:
+            case EPROTO:
+                logger << "errno: " << errno << std::endl;
+                file_assert(false, "accept error");
+            default:
+                file_assert(false, "unknown error");
+        }
         throw std::system_error(errno, std::generic_category());
     }
     return client_socket(sock);
 }
 void client_socket::connect( const sockaddr *addr, socklen_t addrlen) const {
-    assert(m_fd != -1);
+    file_assert(m_fd != -1, "bad connect socket");
     if(::connect(m_fd, addr, addrlen)==-1) {
         throw std::system_error(errno, std::generic_category());
     }
 }
 void cppsocket::getsockopt(int level, int optname, void *optval, socklen_t *optlen) const {
-    assert(m_fd != -1);
+    file_assert(m_fd != -1, "bad getsockopt socket");
     if(::getsockopt(m_fd, level, optname, optval, optlen) == -1) {
        throw std::system_error(errno, std::generic_category());
     }
 }
 void cppsocket::setsockopt(int level, int optname, const void *optval, socklen_t optlen) const {
-    assert(m_fd != -1);
+    file_assert(m_fd != -1, "bad setsockopt");
     if(::setsockopt(m_fd, level, optname, optval, optlen) == -1) {
         throw std::system_error(errno, std::generic_category());
     }
 }
 size_t cppsocket::send(const void *buf, size_t len, int flags) const {
-    assert(m_fd != -1);
+    file_assert(m_fd != -1, "bad send socket");
     const ssize_t bytes = ::send(m_fd , buf, len, flags);
     if(bytes == -1) {
         throw std::system_error(errno, std::generic_category());
@@ -106,7 +124,7 @@ size_t cppsocket::send(const void *buf, size_t len, int flags) const {
 }
 
 size_t cppsocket::recv(void *buf, size_t len, int flags) const {
-    assert(m_fd != -1);
+    file_assert(m_fd != -1, "bad recv on socket");
     const ssize_t bytes = ::recv(m_fd, buf, len, flags);
     if(bytes == -1) {
         throw std::system_error(errno, std::generic_category());
@@ -116,21 +134,21 @@ size_t cppsocket::recv(void *buf, size_t len, int flags) const {
 
 
 void server_socket::bind(const sockaddr *addr, socklen_t addrlen) const {
-    assert(m_fd != -1);
+    file_assert(m_fd != -1, "bad bind");
     if(::bind(m_fd, addr, addrlen) == -1) {
         throw std::system_error(errno, std::generic_category());
     }
 }
 
 void server_socket::listen(int backlog) const {
-    assert(m_fd != -1);
+    file_assert(m_fd != -1, "bad listen");
     if(::listen(m_fd,backlog) == -1) {
         throw std::system_error(errno, std::generic_category());
     }
 }
 
 int cppsocket::fcntl(int cmd...) const {
-    assert(m_fd != -1);
+    file_assert(m_fd != -1, "bad fcntl");
     auto x = ::fcntl(m_fd, cmd);
     if(x == -1) {
         throw std::system_error(errno, std::generic_category());

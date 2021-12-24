@@ -15,17 +15,26 @@
 
 #include <memory>
 #include <list>
-
+#include <variant>
 
 
 namespace fbw{
 
 class connection;
+class server_socket;
 
-using node_ptr = std::list<std::unique_ptr<connection>>::iterator;
+enum class static_fd {
+    acceptor // pipe also
+};
+
+
+using node_ptr = std::list<connection>::iterator;
+using event_var = std::variant<node_ptr, static_fd>;
+
+
 
 struct fpollfd {
-    node_ptr node;
+    event_var node;
     bool read;
     bool write;
 };
