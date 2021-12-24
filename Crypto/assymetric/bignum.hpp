@@ -16,6 +16,7 @@
 #include <sstream>
 #include <iostream>
 #include <algorithm>
+#include <climits>
 
 namespace fbw {
 /*
@@ -54,12 +55,11 @@ public:
     using radix = uint32_t;
     using radix2 = uint64_t;
 #endif
-private:
+//private:
     constexpr static int RADIXBITS = sizeof(radix) * CHAR_BIT;
     constexpr static int INTBYTES = (INTBITS + CHAR_BIT - 1)/CHAR_BIT;
     template<int b = INTBITS>
     constexpr static int INTRADICES = (b + RADIXBITS - 1) /RADIXBITS;
-private:
     using rep = std::array<radix, INTRADICES<INTBITS> >;
     rep v {0};
 public:
@@ -297,15 +297,15 @@ public:
         std::pair<uVar<LBITS>,uVar> out {{},{}};
         uVar<LBITS+INTBITS> quotbuff;
         uVar<LBITS+INTBITS> numbuff;
-        std::copy(denominator.v.begin(), denominator.v.end(), &quotbuff.v[numerator.v.size()]);
-        std::copy(numerator.v.begin(), numerator.v.end(), numbuff.v.begin());
+        std::copy(denominator.v.cbegin(), denominator.v.cend(), &quotbuff.v[numerator.v.size()]);
+        std::copy(numerator.v.cbegin(), numerator.v.cend(), numbuff.v.begin());
 
         for (long i = numerator.v.size()*RADIXBITS; i >= 0; i--) {
             if(numbuff >= quotbuff) {
                 out.first.v[i/RADIXBITS] |= (1ULL << (i % RADIXBITS));
                 numbuff -= quotbuff;
             }
-            quotbuff>>=1;
+            quotbuff >>= 1;
         }
         std::copy(numbuff.v.begin(), &numbuff.v[denominator.v.size()], out.second.v.begin());
         return out;
