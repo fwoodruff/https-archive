@@ -35,7 +35,7 @@ using tp = time_point<steady_clock,nanoseconds>;
 server_socket get_listener_socket(std::string service);
 
 class server {
-    using clist = std::list<std::unique_ptr<connection>>;
+    using clist = std::list<connection>;
     static constexpr int max_listen = 10;
     poll_context m_poller;
     clist connections;
@@ -47,10 +47,11 @@ class server {
     std::string m_service;
     
     void sanity(const std::vector<fpollfd> events);
-
+    
+    std::function<std::unique_ptr<receiver>()> m_factory;
     
 public:
-    server(std::string service = "http");
+    server(std::string service, std::function<std::unique_ptr<receiver>()> receiver_stack);
     ~server(); // on windows startup/shutdown
     void serve_some();
     

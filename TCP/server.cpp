@@ -36,6 +36,7 @@
 #include <chrono>
 #include <sstream>
 #include <thread>
+#include <variant>
 
 
 using namespace std::chrono;
@@ -70,6 +71,7 @@ server_socket get_listener_socket(std::string service) {
     if(::getaddrinfo(nullptr, service.c_str(), &hints, &ai) != 0) {
         throw std::system_error(errno, std::generic_category());
     }
+    
 
     for(p = ai; p != nullptr; p = p->ai_next) {
         try {
@@ -78,7 +80,7 @@ server_socket get_listener_socket(std::string service) {
             int yes;
             listener.setsockopt(SOL_SOCKET, SO_REUSEADDR, &(yes=1), sizeof(int));
             listener.bind(p->ai_addr, p->ai_addrlen);
-        } catch ( std::system_error e ) {
+        } catch (const std::system_error& e ) {
             continue;
         }
         break;
@@ -96,17 +98,14 @@ server_socket get_listener_socket(std::string service) {
  The ctor argument is the data stream handler
  The service is used to infer the correct port number
  */
-server::server(std::string service) {
+server::server(std::string service, std::function<std::unique_ptr<receiver>()> receiver_stack) : m_factory(receiver_stack) {
     logger << "server::server()" << std::endl;
     m_sock = get_listener_socket(service.c_str());
-    m_poller.add_fd(m_sock, connections.end(), true, false);
+    m_poller.add_fd(m_sock, static_fd::acceptor, true, false);
     m_service = service;
     
     
     
-    if(! (service == "http" or service == "https") ) {
-        throw std::logic_error("Unsupported service");
-    }
     
     // interthread/intersocket, need a way for server to initiate message.
     // server-wide pipe
@@ -130,38 +129,54 @@ server::server(std::string service) {
  Implement resumption of old TLS sessions on new connections.
  This will involve an LRU cache of session keys, but where no IP is allowed multiple entries
  */
+
+
+
+
+template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
+template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
+
 void server::serve_some() {
     logger << "server::serve_some()" << std::endl;
-    
-    std::cout << "num connections: " << connections.size() << std::endl;
+    logger << "number of connections: " << connections.size() << std::endl;
     const auto loop_time = steady_clock::now();
-    bool can_accept = connections.size() < MAX_SOCKETS - 11;
-    m_poller.mod_fd(m_sock, connections.end(), can_accept, false);
+    bool can_accept = connections.size() < static_cast<ssize_t>(MAX_SOCKETS - 11);
+    m_poller.mod_fd(m_sock, can_accept, false);
 
-    
     const auto events = m_poller.get_events(!connections.empty());
     
     sanity(events);
     
     for (const auto& event : events) {
-        if(event.node == connections.end()) {
-            try {
-                accept_connection(loop_time);
-            } catch(std::system_error e) {
-                std::cerr << e.what() << std::endl;
+        std::visit(overloaded {
+            [&](node_ptr arg) {
+                file_assert(arg != connections.end(), "fd = end");
+                if(arg->handle_connection(event, loop_time)) {
+                    connections.erase(arg);
+                }
+            },
+            [&](static_fd arg) {
+                file_assert(arg == static_fd::acceptor, "bad event");
+                try {
+                    accept_connection(loop_time);
+                } catch(std::system_error e) {
+                    std::cerr << e.what() << std::endl;
+                }
+                
             }
-        }  else {
-            if((*event.node)->handle_connection(event, loop_time)) {
-                connections.erase(event.node);
-            }
-            
-        }
+        }, event.node);
+
     }
     const auto sentinel_stale = find_if_not(connections.crbegin(), connections.crend(),
                                    [&](const auto& elem){
-        return loop_time - elem->m_time_set > 5s; });
+        return loop_time - elem.m_time_set > 5s; });
     connections.erase(sentinel_stale.base(), connections.end());
 }
+
+
+
+
+
 
 /*
  Add new connections to the connection list
@@ -169,51 +184,60 @@ void server::serve_some() {
 void server::accept_connection(tp loop_time) {
     logger << "server::accept_connection()" << std::endl;
     clist single_node_holder;
+
+    single_node_holder.emplace_back();
+    auto& node = single_node_holder.back();
+
+    node.push_receiver(m_factory());
     
-    single_node_holder.push_back( std::make_unique<connection>() );
-    const auto& node = single_node_holder.back();
 
-    if(m_service == "http") {
-        node->push_receiver(std::make_unique<HTTP>());
-    } else if(m_service == "https") {
-        node->push_receiver(std::make_unique<HTTP>());
-        node->push_receiver(std::make_unique<TLS>());
-    } else {
-        file_assert("bad service");
-    }
-
-    node->m_time_set = loop_time;
+    node.m_time_set = loop_time;
     struct sockaddr_storage cli_addr;
     socklen_t sin_len = sizeof(cli_addr);
-    node->m_socket = m_sock.accept((sockaddr *) &cli_addr, &sin_len);
-    node->m_socket.fcntl(F_SETFL, O_NONBLOCK);
+    node.m_socket = m_sock.accept((sockaddr *) &cli_addr, &sin_len);
+    node.m_socket.fcntl(F_SETFL, O_NONBLOCK);
     
-    m_poller.add_fd(node->m_socket, single_node_holder.begin(), true, false);
-    node->context = &m_poller;
+    m_poller.add_fd(node.m_socket, single_node_holder.begin(), true, false);
+    node.context = &m_poller;
     
     // keep new connections in this scope until fully initialised
-    connections.splice(connections.begin(), single_node_holder);
+    connections.splice(connections.cbegin(), single_node_holder);
 }
 
 server::~server() {
     logger << "~server()" << std::endl;
 }
 
+
+
+
+static volatile void* donothing;
 void server::sanity(const std::vector<fpollfd> events) {
-    for(auto it = connections.begin(); it != connections.end(); it++) {}
+    
+    for(auto it = connections.cbegin(); it != connections.cend(); it++) { donothing = &it; }
     logger << "connections not corrupted" << std::endl;
     
+    
     for(const auto& event : events) {
-        if(event.node == connections.end()) {
+        
+        if(!std::holds_alternative<node_ptr>(event.node)) {
             continue;
         }
+        auto event_node = std::get<node_ptr>(event.node);
+
+        file_assert(event_node != connections.cend(), "end event polled"); 
+        
         file_assert(event.read or event.write, "polled event neither for read nor write");
-        for(auto it = connections.begin(); it != connections.end(); it++) {
-            if(event.node == it) {
+        
+        bool found = false;
+        for(auto it = connections.cbegin(); it != connections.cend(); it++) {
+            if(event_node == it) {
+                found = true;
                 break;
             }
-            file_assert(false, "unknown event polled");
         }
+        file_assert(found, "unknown event polled"); // fires
+        
     }
     logger << "connections OK" << std::endl;
 }
