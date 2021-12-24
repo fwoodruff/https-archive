@@ -9,6 +9,8 @@
 #define pipe_hpp
 
 #include <stdio.h>
+#include <memory>
+
 #include "global.hpp"
 
 
