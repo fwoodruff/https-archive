@@ -11,21 +11,38 @@
 #include <stdio.h>
 #include "global.hpp"
 #include <memory>
+#include <string>
+
 
 namespace fbw {
 
+class hmac;
+
+
 class hash_base {
+    virtual hash_base& update_impl(const uint8_t* data, size_t size) noexcept = 0;
 public:
+    friend hmac;
     virtual ~hash_base() noexcept = default;
     virtual std::unique_ptr<hash_base> clone() const = 0;
     
-    virtual hash_base& update(const uint8_t* begin, size_t size) noexcept = 0;
-    virtual hash_base& update(const ustring& data) noexcept = 0;
+    template<typename T>
+    hash_base& update(const T & data) {
+        return update_impl(data.data(), data.size());
+    }
     
-    virtual std::vector<uint8_t> hash() const & = 0;
-    virtual std::vector<uint8_t> hash() && noexcept = 0;
+    virtual ustring hash() const &;
+    virtual ustring hash() && = 0;
+    
+    
     [[nodiscard]] virtual size_t get_block_size() const noexcept = 0;
 };
+
+inline ustring hash_base::hash() const & {
+    auto copy = clone();
+    return std::move(*copy).hash();
+}
+
 
 }
 
