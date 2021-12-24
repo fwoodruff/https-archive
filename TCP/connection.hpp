@@ -67,7 +67,7 @@ public:
 
     connection();
     
-    void push_receiver(std::unique_ptr<receiver>&& r);
+    void push_receiver(std::unique_ptr<receiver> r);
     
     ~connection();
     connection(const connection& other) = delete;

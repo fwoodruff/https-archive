@@ -32,7 +32,7 @@ activity(status::read_only), primary_receiver(nullptr) {
     logger << "connection::connection()" << std::endl;
 }
 
-void connection::push_receiver(std::unique_ptr<receiver>&& r) {
+void connection::push_receiver(std::unique_ptr<receiver> r) {
     logger << "connection::push_receiver()" << std::endl;
     if(primary_receiver != nullptr) {
         r->next = std::move(primary_receiver);
@@ -46,7 +46,7 @@ connection::~connection() {
     if(context != nullptr) {
         try {
             context->del_fd(m_socket);
-        } catch(std::system_error e) {
+        } catch(const std::system_error& e) {
             std::cerr << e.what() << std::endl;
         }
     }
@@ -71,6 +71,10 @@ void connection::send_bytes_over_network() {
     
     auto bytes = m_socket.send(write_buffer.data(), write_buffer.size(), 0);
     file_assert(bytes <= write_buffer.size(), "bytes <= write_buffer.size()");
+    
+    
+    
+    
     if(bytes == write_buffer.size()) {
         write_buffer.clear();
     } else {
@@ -93,26 +97,15 @@ ustring connection::receive_bytes_from_network() {
         activity = status::closed;
         throw std::runtime_error("closing connection");
     }
-    /*
-    std::cout << "READ BYTES:\n";
-    for(int i = 0; i < bytes; i++) {
-        std::cout << std::hex << std::setw(2) << std::setfill('0') << int(out[i]);
-    }
-    std::cout << std::endl;
-     */
     out.resize(bytes);
+    
+    
+    
     return out;
 }
 
 ssize_t connection::queue_bytes_for_write(ustring bytes) {
     logger << "connection::queue_bytes_for_write()" << std::endl;
-    /*
-    std::cout << "SEND BYTES:\n";
-    for(auto c : bytes) {
-        std::cout << std::hex << std::setw(2) << std::setfill('0') << int(c);
-    }
-    std::cout << std::endl;
-     */
     write_buffer.append(bytes);
     
 
@@ -158,7 +151,7 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                 assert(false);
                 
         }
-    } catch(std::runtime_error e) {
+    } catch(const std::runtime_error& e) {
         activity = status::closed;
     }
 
@@ -169,8 +162,8 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
     bool poll_for_write = (!write_buffer.empty() and activity != status::closed) or
                           (activity == status::always_poll and write_buffer.empty());
 
-    
-    context->mod_fd(m_socket, event.node, poll_for_read, poll_for_write);
+    // fix me
+    context->mod_fd(m_socket, poll_for_read, poll_for_write);
     
     if(activity != status::closed) {
         if(!write_buffer.empty()) {
