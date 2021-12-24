@@ -58,7 +58,7 @@ std::unordered_map<std::string,std::string> MIMES(std::string directory_name) {
             }
             std::string filenn = directory_name + "/" + filen;
             auto map = MIME_csv_to_map(filenn);
-            mimes.insert(map.begin(),map.end());
+            mimes.insert(map.cbegin(),map.cend());
         }
         closedir (dir);
         return mimes;
@@ -111,7 +111,7 @@ std::string get_MIME(std::string extension) {
     }
     try {
         return MIMEmap.at(extension);
-    } catch(std::logic_error e) {
+    } catch(const std::logic_error& e) {
         throw http_error("415 Unsupported Media Type");
     }
 }
