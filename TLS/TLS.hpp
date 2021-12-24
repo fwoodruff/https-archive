@@ -19,7 +19,7 @@
 
 namespace fbw {
 
-class TLS : public receiver {
+class TLS final : public receiver {
     
     ustring m_input;
     std::array<uint8_t,32> m_client_random;
@@ -60,18 +60,25 @@ class TLS : public receiver {
     [[nodiscard]] ustring expand_master(const std::array<unsigned char,48>& master,
                           const std::array<unsigned char,32>& server_random,
                           const std::array<unsigned char,32>& client_random, size_t len) const;
-    [[nodiscard]] std::array<uint8_t,48> make_master_secret(std::array<uint8_t,32> server_private,
-                                              std::array<uint8_t,32> client_public,
-                                              std::array<uint8_t,32> server_random,
-                                              std::array<uint8_t,32> client_random) const;
+    
     
     unsigned short cipher_choice(const ustring& s);
     
     void client_application_data(const ustring& data, status_message& output);
 
     void tls_notify_close(status_message& output); // keep this?
+    
+    [[nodiscard]] static std::array<uint8_t,48> make_master_secret(const std::unique_ptr<const hash_base>& hasher,
+                                                            std::array<uint8_t,32> server_private,
+                                              std::array<uint8_t,32> client_public,
+                                              std::array<uint8_t,32> server_random,
+                                              std::array<uint8_t,32> client_random);
 public:
+    
+    
     status_message handle(ustring) noexcept override;
+    
+    void test_handshake() && ;
     
 };
 
