@@ -299,8 +299,8 @@ std::array<unsigned char,65> get_public_key(std::array<unsigned char,32> private
     
     auto xs = x.serialise();
     auto ys = y.serialise();
-    std::copy(xs.begin(), xs.end(), &out[1]);
-    std::copy(ys.begin(), ys.end(), &out[33]);
+    std::copy(xs.cbegin(), xs.cend(), &out[1]);
+    std::copy(ys.cbegin(), ys.cend(), &out[33]);
     return out;
 }
 
@@ -406,14 +406,14 @@ ustring DER_ECDSA(
     } else {
         out.append({0x20});
     }
-    out.append(r.begin(),r.end());
+    out.append(r.cbegin(),r.cend());
     out.append({0x02});
     if(s[0]&0x80) {
         out.append({0x21,0x00});
     } else {
         out.append({0x20});
     }
-    out.append(s.begin(),s.end());
+    out.append(s.cbegin(),s.cend());
     out[1] = (unsigned char)out.size()-2;
     return out;
     
