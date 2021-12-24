@@ -10,9 +10,9 @@
 
 
 
-#include <stdio.h>
+#include <cstdio>
 #include <array>
-
+#include <vector>
 
 namespace fbw::aes {
 
@@ -30,7 +30,7 @@ using roundkey = typename std::vector<byte_word>;
 using aeskey = typename std::vector<uint8_t>;
 
 
-[[nodiscard]] roundkey aes_key_schedule(const aeskey& AESkey) noexcept;
+[[nodiscard]] roundkey aes_key_schedule(const aeskey& AESkey);
 
 [[nodiscard]] aes_block aes_encrypt(aes_block plaintext, const roundkey& roundkeys) noexcept;
 

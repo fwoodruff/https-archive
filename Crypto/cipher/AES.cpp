@@ -9,6 +9,7 @@
 #include "AES.hpp"
 #include "global.hpp"
 
+#include <cassert>
 #include <stdint.h>
 #include <algorithm>
 #include <iostream>
@@ -34,7 +35,7 @@ void MixColumns(aes_block&) noexcept;
 void ShiftRows(aes_block&) noexcept;
 void SubBytes(aes_block&) noexcept;
 
-[[nodiscard]] roundkey KeyExpansion(const aeskey& AESkey) noexcept;
+[[nodiscard]] roundkey KeyExpansion(const aeskey& AESkey);
 [[nodiscard]] aes_block cipher(aes_block plaintext, const roundkey&) noexcept;
 [[nodiscard]] aes_block InvCipher(aes_block ciphertext, const roundkey& roundkeys) noexcept;
 
@@ -104,7 +105,7 @@ void InvSubBytes(aes_block& state) noexcept {
  performs the row rotation
  */
 void ShiftRows(aes_block& b) noexcept {
-    std::array<uint8_t,Nb> temp;
+    std::array<uint8_t,Nb> temp {};
     for(int i = 1; i < 4; i++) {
         for(int j = 0; j < Nb; j++) {
             temp[j] = b[(4*(i+j)+i)%(4*Nb)];
@@ -119,7 +120,7 @@ void ShiftRows(aes_block& b) noexcept {
  inverts the row rotation
  */
 void InvShiftRows(aes_block& b) noexcept {
-    std::array<uint8_t,Nb> temp;
+    std::array<uint8_t,Nb> temp {};
     for(int i = 1; i < 4; i++) {
         for(int j = 0; j < Nb; j++) {
             temp[j] = b[(4*((Nb-i)+j)+i)%(4*Nb)];
@@ -227,8 +228,10 @@ constexpr auto Rcon = [](){
 }();
 
 
-roundkey KeyExpansion(const aeskey& AESkey) noexcept {
+roundkey KeyExpansion(const aeskey& AESkey) {
+    
     roundkey keybytes;
+    
     keybytes.resize(28 + AESkey.size());
 
     const ssize_t Nka = AESkey.size()/4;
@@ -240,22 +243,23 @@ roundkey KeyExpansion(const aeskey& AESkey) noexcept {
         }
     }
     for(ssize_t i = Nka; i < Nb * (Nra+1); i++) {
-        byte_word temp;
+        byte_word temp {};
         temp = keybytes[i-1];
         
         if (i % Nka == 0) {
-            std::rotate(temp.begin(),&temp[1],temp.end());
-            std::transform(temp.begin(), temp.end(), temp.begin(), [](uint8_t c) { return SBOX[c]; });
+            std::rotate(temp.begin(), &temp[1], temp.end());
+            std::transform(temp.cbegin(), temp.cend(), temp.begin(), [](uint8_t c) { return SBOX[c]; });
             temp[0] ^= Rcon[i/Nka];
         } else if (Nka > 6 and i % Nka == 4) {
-            std::transform(temp.begin(), temp.end(), temp.begin(), [](uint8_t c) { return SBOX[c]; });
+            std::transform(temp.cbegin(), temp.cend(), temp.begin(), [](uint8_t c) { return SBOX[c]; });
         }
         const auto& kb = keybytes[i-Nka];
-        std::transform(kb.begin(), kb.end(), temp.begin(), keybytes[i].begin(), std::bit_xor<uint8_t>());
+        std::transform(kb.cbegin(), kb.cend(), temp.cbegin(), keybytes[i].begin(), std::bit_xor<uint8_t>());
     }
     return keybytes;
 }
-roundkey aes_key_schedule(const aeskey& AESkey) noexcept {
+
+roundkey aes_key_schedule(const aeskey& AESkey) {
     return KeyExpansion(AESkey);
 }
 
