@@ -62,7 +62,7 @@ time_t get_file_date(FILE* file) {
  */
 std::string bytes_to_hex_string(const uint8_t* const data, size_t len) {
     std::ostringstream ss;
-    for(int i = 0; i < len; ++i) {
+    for(size_t i = 0; i < len; ++i) {
         ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(data[i]);
     }
     return ss.str();
@@ -130,7 +130,7 @@ std::pair<std::string, size_t> body_size(const std::string& header) {
             }
             try {
                 return {std::string(), std::stoi(arg) };
-            } catch(std::invalid_argument e) {
+            } catch(const std::invalid_argument& e) {
                 throw http_error("400 Bad Request");
             }
         } else if (content.size() > multipart.size() and content.substr(0, multipart.size()) == multipart) {
