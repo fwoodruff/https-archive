@@ -97,7 +97,7 @@ status_message TLS::handle(ustring input) noexcept {
 void TLS::handle_record(tls_record record, status_message& output) {
     logger << "TLS::handle_record()" <<std::endl;
     if (record.major_version != 3) {
-        throw ssl_error("unsupported version", AlertLevel::fatal, AlertDescription::protocol_version); // learn ssl errors
+        throw ssl_error("unsupported version", AlertLevel::fatal, AlertDescription::protocol_version);
     }
     if (record.contents.size() > 16384) {
         throw ssl_error("oversized record", AlertLevel::fatal, AlertDescription::record_overflow);

@@ -9,6 +9,7 @@
 #include "bignum.hpp"
 #include "secp256r1.hpp"
 #include "global.hpp"
+#include "TLS_enums.hpp"
 
 #include <cassert>
 #include <array>
@@ -334,7 +335,7 @@ ECDSA_signature ECDSA_impl2(const ct_u256& k_random, const ct_u256& digest, cons
     auto [x, y] = point_multiply(k_random, secp256r1_gx, secp256r1_gy);
     auto r = x % secp256r1_q;
     if (r == "0x0"_xl) {
-        throw std::logic_error("bad random");
+        throw ssl_error("bad random", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
     auto s = (invQ(k_random)* ( ct_u512(digest) + r * private_key) ) % secp256r1_q;
     if (s == "0x0"_xl) {
@@ -349,7 +350,7 @@ ECDSA_signature ECDSA_impl2(const ct_u256& k_random, const ct_u256& digest, cons
 
 ECDSA_signature ECDSA_impl(const ct_u256& k_random, const ct_u256& digest, const ct_u256& private_key) {
     if (k_random == "0x0"_xl or k_random >= secp256r1_q) {
-        throw std::logic_error("bad random");
+        throw ssl_error("bad random", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
     
     auto [x, y] = point_multiply(k_random, secp256r1_gx, secp256r1_gy);
@@ -420,7 +421,5 @@ ustring DER_ECDSA(
 }
 
 
-
-
-} // namespace fbw::curve25519
+} // namespace fbw::secp256r1
 
