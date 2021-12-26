@@ -10,6 +10,7 @@
 #include "AES.hpp"
 #include "global.hpp"
 #include "keccak.hpp"
+#include "TLS_enums.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -115,7 +116,7 @@ tls_record AES_CBC_SHA::decrypt(tls_record record) {
     
     
     if(record.contents.size() % 16 != 0) {
-        throw ssl_error("bad encrypted record length");
+        throw ssl_error("bad encrypted record length", AlertLevel::fatal, AlertDescription::decrypt_error);
     }
     if(record.contents.size() < 32) {
         record.contents = {};
@@ -144,11 +145,11 @@ tls_record AES_CBC_SHA::decrypt(tls_record record) {
     }
     int siz = plaintext[plaintext.size()-1];
     if(siz+1+client_MAC_key.size() > plaintext.size()) {
-        throw ssl_error("bad client padding length");
+        throw ssl_error("bad client padding length", AlertLevel::fatal, AlertDescription::decrypt_error);
     }
     for(int i = 0; i < siz+1; i++) {
         if(plaintext[plaintext.size()-1-i] != siz) {
-            throw ssl_error("bad client padding");
+            throw ssl_error("bad client padding", AlertLevel::fatal, AlertDescription::decrypt_error);
         }
     }
 
@@ -174,7 +175,7 @@ tls_record AES_CBC_SHA::decrypt(tls_record record) {
     auto machash = std::move(ctx).hash();
     
     if(!std::equal(mac_calc.cbegin(), mac_calc.cend(), machash.cbegin())) {
-        throw ssl_error("bad client MAC");
+        throw ssl_error("bad client MAC", AlertLevel::fatal, AlertDescription::bad_record_mac);
     }
     record.contents = std::move(plaintext);
     return record;

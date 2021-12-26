@@ -7,6 +7,7 @@
 
 #include "PEMextract.hpp"
 #include "secp256r1.hpp"
+#include "TLS_enums.hpp"
 
 #include <iostream>
 #include <fstream>
@@ -177,7 +178,7 @@ std::vector<ustring> der_cert_from_file(std::string filename) {
         size_t start_idx = file.find(begin, end_idx);
         if(start_idx == std::string::npos) {
             if(end_idx == 0) {
-                throw ssl_error("bad certificate");
+                throw ssl_error("bad certificate", AlertLevel::fatal, AlertDescription::bad_certificate);
             } else {
                 break;
             }
@@ -185,7 +186,7 @@ std::vector<ustring> der_cert_from_file(std::string filename) {
         start_idx += begin.size();
         end_idx = file.find(end,end_idx);
         if(end_idx == std::string::npos) {
-            throw ssl_error("bad certificate");
+            throw ssl_error("bad certificate", AlertLevel::fatal, AlertDescription::bad_certificate);
         }
         std::string data = file.substr(start_idx,end_idx-start_idx);
         end_idx+=end.size();

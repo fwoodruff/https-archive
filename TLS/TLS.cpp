@@ -77,7 +77,16 @@ status_message TLS::handle(ustring input) noexcept {
         }
     } catch(const ssl_error& e) {
         logger << e.what() << std::endl;
-        return {{}, status::closed };
+        tls_record r;
+        r.type = 0x15;
+        r.major_version = 0x03;
+        r.minor_version = 0x03;
+        r.contents = { static_cast<uint8_t>(e.m_l), static_cast<uint8_t>(e.m_d) };
+        if(handshake_done) {
+            r = cipher_context->encrypt(r);
+        }
+        
+        return {r.serialise(), status::closing };
     } catch(const std::out_of_range& e) {
         logger << e.what() << std::endl;
         return {{}, status::closed };
@@ -88,10 +97,10 @@ status_message TLS::handle(ustring input) noexcept {
 void TLS::handle_record(tls_record record, status_message& output) {
     logger << "TLS::handle_record()" <<std::endl;
     if (record.major_version != 3) {
-        throw ssl_error("unsupported version"); // learn ssl errors
+        throw ssl_error("unsupported version", AlertLevel::fatal, AlertDescription::protocol_version); // learn ssl errors
     }
     if (record.contents.size() > 16384) {
-        throw ssl_error("oversized record");
+        throw ssl_error("oversized record", AlertLevel::fatal, AlertDescription::record_overflow);
     }
     
     if (handshake_done) {
@@ -127,7 +136,7 @@ void TLS::handle_record(tls_record record, status_message& output) {
             client_heartbeat(std::move(record.contents), output);
             break;
         default:
-            throw ssl_error("bad record type");
+            throw ssl_error("bad record type", AlertLevel::fatal, AlertDescription::illegal_parameter);
             break;
     }
     
@@ -137,7 +146,7 @@ void TLS::client_handshake(ustring handshake_record, status_message& output) {
     logger << "TLS::client_handshake()" <<std::endl;
     switch (handshake_record.at(0)) {
         case static_cast<uint8_t>(HandshakeType::hello_request):
-            throw ssl_error("hello_request not supported");
+            throw ssl_error("hello_request not supported", AlertLevel::fatal, AlertDescription::handshake_failure);
         case static_cast<uint8_t>(HandshakeType::client_hello):
             handle_client_hello(std::move(handshake_record), output);
             break;
@@ -148,7 +157,7 @@ void TLS::client_handshake(ustring handshake_record, status_message& output) {
             client_handshake_finished(std::move(handshake_record), output);
             break;
         default:
-            throw ssl_error("unsupported handshake record type");
+            throw ssl_error("unsupported handshake record type", AlertLevel::fatal, AlertDescription::handshake_failure);
             break;
     }
 }
@@ -162,11 +171,11 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
     
     size_t len = safe_asval(hello,1,3);
     if(len+4 != hello.size()) {
-        throw ssl_error("bad hello");
+        throw ssl_error("bad hello", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
     // client version
     if ( hello.at(4) != 3 or hello.at(5) != 3 ) {
-        throw ssl_error("unsupported version handshake");
+        throw ssl_error("unsupported version handshake", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
     // client random
     std::copy(&hello.at(6), &hello.at(38), m_client_random.begin());
@@ -181,7 +190,7 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
     idx += ciphers_len + 2;
     // compression
     if(hello.at(idx) != 1 and hello.at(idx + 1) != 0) {
-        throw ssl_error("compression not supported");
+        throw ssl_error("compression not supported", AlertLevel::fatal, AlertDescription::decompression_failure);
     }
     idx += 2;
     // extensions
@@ -204,7 +213,7 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
     }
     
     if(extensions_len != 0) {
-        throw ssl_error("bad extension");
+        throw ssl_error("bad extension", AlertLevel::fatal, AlertDescription::internal_error);
     }
 
 
@@ -341,11 +350,11 @@ void TLS::handle_client_key_exchange(const ustring& key_exchange) {
     const size_t len = safe_asval(key_exchange,1,3);
     const size_t keylen = safe_asval(key_exchange,4,1);
     if(len+4 != key_exchange.size() or len != keylen + 1) {
-        throw ssl_error("bad key exchange");
+        throw ssl_error("bad key exchange", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
     
     if(key_exchange.size() < 37) {
-        throw ssl_error("bad public key");
+        throw ssl_error("bad public key", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
     std::copy(&key_exchange[5], &key_exchange[37], client_public_key.begin());
     master_secret = make_master_secret(hasher_factory, server_private_key_ephem, client_public_key, m_server_random, m_client_random);
@@ -359,7 +368,7 @@ void TLS::handle_client_key_exchange(const ustring& key_exchange) {
 void TLS::client_change_cipher_spec(const ustring& change_message) {
     logger << "TLS::client_change_cipher_spec()" << std::endl;
     if(change_message.size() != 1 and change_message.at(0) != static_cast<uint8_t>(ChangeCipherSpec::change_cipher_spec)) {
-        throw ssl_error("bad cipher spec");
+        throw ssl_error("bad cipher spec", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
     handshake_done = true;
 }
@@ -370,7 +379,7 @@ void TLS::client_handshake_finished(const ustring& finish, status_message& outpu
     file_assert(finish.at(0) == static_cast<uint8_t>(HandshakeType::finished));
     const size_t len = safe_asval(finish,1,3);
     if(len != 12) {
-        throw ssl_error("bad verification");
+        throw ssl_error("bad verification", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
     const std::string seed_signed = "client finished";
     ustring seed;
@@ -398,7 +407,7 @@ void TLS::client_handshake_finished(const ustring& finish, status_message& outpu
         }
     }
     if(eq == false) {
-        throw ssl_error("handshake verification failed");
+        throw ssl_error("handshake verification failed", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
 
     handshake_hasher->update(finish);
@@ -449,7 +458,7 @@ void TLS::server_handshake_finished(status_message& output) {
     if(handshake_done) {
         out = cipher_context->encrypt(std::move(out));
     } else {
-        throw ssl_error("Unwilling to respond on unencrypted channel");
+        throw ssl_error("Unwilling to respond on unencrypted channel", AlertLevel::fatal, AlertDescription::insufficient_security);
     }
     output.m_response.append(out.serialise());
 }
@@ -471,7 +480,7 @@ void TLS::client_application_data(const ustring& application_data, status_messag
         if(handshake_done) {
             out = cipher_context->encrypt(std::move(out));
         } else {
-            throw ssl_error("Unwilling to respond on unencrypted channel");
+            throw ssl_error("Unwilling to respond on unencrypted channel", AlertLevel::fatal, AlertDescription::insufficient_security);
         }
         output.m_response.append(out.serialise());
     }
@@ -496,7 +505,7 @@ void TLS::tls_notify_close(status_message& output) {
 bool TLS::client_alert(const ustring& alert_message, status_message& output) {
     logger << "TLS::client_alert()" << std::endl;
     if(alert_message.size() != 2) {
-        throw ssl_error("bad alert");
+        throw ssl_error("bad alert", AlertLevel::fatal, AlertDescription::unexpected_message);
     }
     switch(alert_message[0]) {
         case static_cast<uint8_t>(AlertLevel::warning):
@@ -512,7 +521,7 @@ bool TLS::client_alert(const ustring& alert_message, status_message& output) {
         default:
             flag:
             logger << int(alert_message[0]) << " " << int(alert_message[1]) << " ";
-            throw ssl_error("unsupported alert");
+            throw ssl_error("unsupported alert", AlertLevel::fatal, AlertDescription::unexpected_message);
     }
 }
 
@@ -520,7 +529,7 @@ bool TLS::client_alert(const ustring& alert_message, status_message& output) {
 void TLS::client_heartbeat(const ustring& heartbeat_message, status_message& output) {
     logger << "TLS::client_heartbeat()" << std::endl;
     if(heartbeat_message.size() != 1 or heartbeat_message[0] != 0x01) {
-        throw ssl_error("bad heartbeat");
+        throw ssl_error("bad heartbeat", AlertLevel::fatal, AlertDescription::access_denied);
     }
     
     tls_record heartbeat_record;
@@ -599,7 +608,7 @@ unsigned short TLS::cipher_choice(const ustring& s) {
         
         
     }
-    throw ssl_error("no supported ciphers");
+    throw ssl_error("no supported ciphers", AlertLevel::fatal, AlertDescription::handshake_failure );
 }
 
 ustring TLS::expand_master(const std::array<unsigned char,48>& master,

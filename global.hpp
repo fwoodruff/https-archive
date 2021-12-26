@@ -57,11 +57,6 @@ inline void write_int(uint64_t x, uint8_t* const s, short n) noexcept {
 
 
 
-
-
-
-
-
 struct tls_record {
     ustring contents;
     uint8_t type;
@@ -75,11 +70,6 @@ struct tls_record {
         return out;
     }
 };
-
-class ssl_error : public std::runtime_error {
-    using std::runtime_error::runtime_error;
-};
-
 
 
 

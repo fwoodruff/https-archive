@@ -116,6 +116,23 @@ enum class cipher_suites : uint16_t {
     TLS_ECDHE_RSA_WITH_3DES_EDE_CBC_SHA = 0xc012,
     TLS_RSA_WITH_3DES_EDE_CBC_SHA = 0x000a
 };
+
+
+class ssl_error : public std::runtime_error {
+public:
+    AlertLevel m_l;
+    AlertDescription m_d;
+
+    ssl_error(const std::string& what_arg,
+              AlertLevel l,
+              AlertDescription d) :
+    std::runtime_error(what_arg), m_l(l), m_d(d) {}
+    
+    
+};
+
+
+
 } // namespace fbw
 
 #endif /* TLS_enums_h */

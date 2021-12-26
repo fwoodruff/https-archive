@@ -10,6 +10,8 @@
 #include "galois_counter.hpp"
 #include "global.hpp"
 #include "AES.hpp"
+#include "TLS_enums.hpp"
+
 #include <cstdlib>
 #include <array>
 #include <vector>
@@ -304,7 +306,7 @@ ustring aes_gcm_ad(roundkey rk, ustring iv,
     ustring S = aes_gcm_ghash(H, aad, crypt.data(), crypt.size());
     aes_gctr(rk, J0, S.data(), S.size(), &T[0]);
     if(!std::equal(tag.begin(), tag.end(), T.begin())) {
-        throw ssl_error("bad tag");
+        throw ssl_error("bad tag", AlertLevel::fatal, AlertDescription::bad_record_mac);
     }
 
     return plain;
@@ -379,7 +381,7 @@ tls_record AES_128_GCM_SHA256::encrypt(tls_record record) {
 
 tls_record AES_128_GCM_SHA256::decrypt(tls_record record) {
     if(record.contents.size() < 24) {
-        throw ssl_error("short record");
+        throw ssl_error("short record", AlertLevel::fatal, AlertDescription::decrypt_error);
     }
     
     ustring sequence;

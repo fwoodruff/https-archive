@@ -1,1 +1,221 @@
+Start server at: server::server()
+get_listener_socket()
+Sun Dec 26 12:00:16 2021
+TLS::make_master_secret()
+cppsocket::cppsocket(int)
+cppsocket::cppsocket(int,int,int)
+cppsocket::operator=(cppsocket&& other)
+cppsocket::~cppsocket()
+cppsocket::operator=(cppsocket&& other)
+cppsocket::~cppsocket()
+server::serve_some()
+number of connections: 0
+poll context file descriptors: 1
+start main()
+server::server()
+get_listener_socket()
+cppsocket::cppsocket(int)
+cppsocket::cppsocket(int,int,int)
+cppsocket::operator=(cppsocket&& other)
+cppsocket::~cppsocket()
+cppsocket::operator=(cppsocket&& other)
+cppsocket::~cppsocket()
+loop count: 0
+server::serve_some()
+number of connections: 0
+poll context file descriptors: 1
+connections not corrupted
+connections OK
+server::accept_connection()
+connection::connection()
+connection::push_receiver()
+accepting socketfd: 7
+cppsocket::cppsocket(int)
+cppsocket::operator=(cppsocket&& other)
+cppsocket::~cppsocket()
+loop count: 1
+server::serve_some()
+number of connections: 1
+poll context file descriptors: 2
+connections not corrupted
+connections OK
+connection::handle_connection()
+connection::receive_bytes_from_network()
+TLS::handle()
+TLS::handle_record()
+TLS::client_handshake()
+TLS::handle_client_hello()
+TLS::cipher_choice()
+TLS::server_hello()
+TLS::server_certificate()
+TLS::server_key_exchange()
+TLS::server_hello_done()
+loop count: 2
+server::serve_some()
+number of connections: 1
+poll context file descriptors: 2
+connections not corrupted
+connections OK
+connection::handle_connection()
+connection::send_bytes_over_network()
+loop count: 3
+server::serve_some()
+number of connections: 1
+poll context file descriptors: 2
+connections not corrupted
+connections OK
+connection::handle_connection()
+connection::receive_bytes_from_network()
+TLS::handle()
+TLS::handle_record()
+TLS::client_handshake()
+TLS::handle_client_key_exchange()
+TLS::make_master_secret()
+TLS::handle_record()
+TLS::client_change_cipher_spec()
+TLS::handle_record()
+TLS::client_handshake()
+TLS::client_handshake_finished()
+TLS::server_change_cipher_spec()
+TLS::server_handshake_finished()
+loop count: 4
+server::serve_some()
+number of connections: 1
+poll context file descriptors: 2
+connections not corrupted
+connections OK
+connection::handle_connection()
+connection::send_bytes_over_network()
+loop count: 5
+server::serve_some()
+number of connections: 1
+poll context file descriptors: 2
+connections not corrupted
+connections OK
+connection::handle_connection()
+connection::receive_bytes_from_network()
+TLS::handle()
+TLS::handle_record()
+TLS::client_application_data()
+-----------------------------
+Client header:
+GET / HTTP/1.1
+Host: localhost
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:95.0) Gecko/20100101 Firefox/95.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate, br
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: none
+Sec-Fetch-User: ?1
+Cache-Control: max-age=0
 
+
+body size extracted: 0
+-----------------------------
+loop count: 6
+server::serve_some()
+number of connections: 1
+poll context file descriptors: 2
+connections not corrupted
+connections OK
+connection::handle_connection()
+connection::send_bytes_over_network()
+loop count: 7
+server::serve_some()
+number of connections: 1
+poll context file descriptors: 2
+connections not corrupted
+connections OK
+connection::handle_connection()
+connection::receive_bytes_from_network()
+TLS::handle()
+TLS::handle_record()
+TLS::client_application_data()
+-----------------------------
+Client header:
+GET /CV.pdf HTTP/1.1
+Host: localhost
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:95.0) Gecko/20100101 Firefox/95.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate, br
+Connection: keep-alive
+Referer: https://localhost/
+Upgrade-Insecure-Requests: 1
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: same-origin
+Sec-Fetch-User: ?1
+
+
+body size extracted: 0
+-----------------------------
+loop count: 8
+server::serve_some()
+number of connections: 1
+poll context file descriptors: 2
+connections not corrupted
+connections OK
+connection::handle_connection()
+connection::send_bytes_over_network()
+loop count: 9
+server::serve_some()
+number of connections: 1
+poll context file descriptors: 2
+connections not corrupted
+connections OK
+connection::handle_connection()
+connection::receive_bytes_from_network()
+TLS::handle()
+TLS::handle_record()
+TLS::client_application_data()
+-----------------------------
+Client header:
+GET /CV.pdf HTTP/1.1
+Host: localhost
+User-Agent: Mozilla/5.0 (Macintosh; Intel Mac OS X 10.15; rv:95.0) Gecko/20100101 Firefox/95.0
+Accept: text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8
+Accept-Language: en-US,en;q=0.5
+Accept-Encoding: gzip, deflate, br
+Connection: keep-alive
+Upgrade-Insecure-Requests: 1
+Sec-Fetch-Dest: document
+Sec-Fetch-Mode: navigate
+Sec-Fetch-Site: none
+Sec-Fetch-User: ?1
+Cache-Control: max-age=0
+
+
+body size extracted: 0
+-----------------------------
+loop count: 10
+server::serve_some()
+number of connections: 1
+poll context file descriptors: 2
+connections not corrupted
+connections OK
+connection::handle_connection()
+connection::send_bytes_over_network()
+loop count: 11
+server::serve_some()
+number of connections: 1
+poll context file descriptors: 2
+connections not corrupted
+connections OK
+loop count: 12
+server::serve_some()
+number of connections: 1
+poll context file descriptors: 2
+connections not corrupted
+connections OK
+connection::~connection()
+cppsocket::~cppsocket()
+closing socketfd: 7
+loop count: 13
+server::serve_some()
+number of connections: 0
+poll context file descriptors: 1
