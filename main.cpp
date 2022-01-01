@@ -124,17 +124,14 @@ void red() {
     }
 }
 
+
+
+
+
 int main() {
-    std::thread th1([]() {
-        loop();
-    });
     
-    std::thread th2([]() {
-        red();
-    });
-    th2.join();
-    
-     
-    th1.join();
+
+    loop();
+
     
 }

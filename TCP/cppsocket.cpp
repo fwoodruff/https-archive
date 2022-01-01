@@ -118,6 +118,7 @@ size_t cppsocket::send(const void *buf, size_t len, int flags) const {
     file_assert(m_fd != -1, "bad send socket");
     const ssize_t bytes = ::send(m_fd , buf, len, flags);
     if(bytes == -1) {
+        logger << "send error: " << errno << std::endl;
         throw std::system_error(errno, std::generic_category());
     }
     return bytes;
@@ -145,6 +146,7 @@ void server_socket::listen(int backlog) const {
     if(::listen(m_fd,backlog) == -1) {
         throw std::system_error(errno, std::generic_category());
     }
+    
 }
 
 int cppsocket::fcntl(int cmd...) const {

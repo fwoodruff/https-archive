@@ -20,7 +20,7 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 
-typedef unsigned char       aes_uchar;
+using aes_uchar = unsigned char;
 typedef unsigned short      aes_ushort;
 typedef unsigned int        aes_uint;
 typedef unsigned long long  aes_ulong;
@@ -69,12 +69,9 @@ static void inc32(aes_block& block) {
 
 
 static void xor_block(aes_uchar *dst, const aes_uchar *src) {
-    aes_uint *d = (aes_uint *) dst;
-    aes_uint *s = (aes_uint *) src;
-    *d++ ^= *s++;
-    *d++ ^= *s++;
-    *d++ ^= *s++;
-    *d++ ^= *s++;
+    for(int i = 0; i < 16; i ++) {
+        *dst++ ^= *src++;
+    }
 }
 
 
@@ -368,18 +365,19 @@ tls_record AES_128_GCM_SHA256::encrypt(tls_record record) {
 
     auto [ciphertext, auth_tag] = aes_gcm_ae(server_write_round_keys, iv, record.contents, additional_data);
     
-    ustring sss = aes_gcm_ad(server_write_round_keys, iv, ciphertext, additional_data, auth_tag);
     
     
     
-    assert(auth_tag.size() == 16);
-    assert(sequence_no.size() == 8);
+    
+    file_assert(auth_tag.size() == 16, "no auth tag");
+    file_assert(sequence_no.size() == 8, "no seq no");
     
     record.contents = sequence_no + ciphertext + auth_tag;
     return record;
 }
 
 tls_record AES_128_GCM_SHA256::decrypt(tls_record record) {
+    logger << "GCM decrypt" << std::endl;
     if(record.contents.size() < 24) {
         throw ssl_error("short record", AlertLevel::fatal, AlertDescription::decrypt_error);
     }
@@ -396,8 +394,8 @@ tls_record AES_128_GCM_SHA256::decrypt(tls_record record) {
     ustring auth_tag;
     auth_tag.append({record.contents.end()-16, record.contents.end()});
     
-    assert(auth_tag.size() == 16);
-    assert(explicit_IV.size() == 8);
+    file_assert(auth_tag.size() == 16, "bad auth tag");
+    file_assert(explicit_IV.size() == 8,  "bad explicit_IV");
     
     ustring additional_data;
     additional_data.append(sequence);

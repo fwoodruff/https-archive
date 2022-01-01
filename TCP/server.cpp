@@ -140,7 +140,7 @@ void server::serve_some() {
     logger << "server::serve_some()" << std::endl;
     logger << "number of connections: " << connections.size() << std::endl;
     const auto loop_time = steady_clock::now();
-    bool can_accept = connections.size() < static_cast<ssize_t>(MAX_SOCKETS - 11);
+    bool can_accept = connections.size() < static_cast<size_t>(MAX_SOCKETS - 11);
     m_poller.mod_fd(m_sock, can_accept, false);
 
     const auto events = m_poller.get_events(!connections.empty());
@@ -159,14 +159,14 @@ void server::serve_some() {
                 file_assert(arg == static_fd::acceptor, "bad event");
                 try {
                     accept_connection(loop_time);
-                } catch(std::system_error e) {
-                    std::cerr << e.what() << std::endl;
+                } catch(const std::runtime_error& e) {
+                    logger << e.what() << std::endl;
                 }
-                
             }
         }, event.node);
 
     }
+    
     const auto sentinel_stale = find_if_not(connections.crbegin(), connections.crend(),
                                    [&](const auto& elem){
         return loop_time - elem.m_time_set > 5s; });
@@ -197,11 +197,22 @@ void server::accept_connection(tp loop_time) {
     node.m_socket = m_sock.accept((sockaddr *) &cli_addr, &sin_len);
     node.m_socket.fcntl(F_SETFL, O_NONBLOCK);
     
+    auto [full_name, ip ] = node.m_socket.cli_socketinfo();
+    logger << full_name << " ... " << ip << std::endl;
+    
     m_poller.add_fd(node.m_socket, single_node_holder.begin(), true, false);
     node.context = &m_poller;
     
+    
+    
+    
     // keep new connections in this scope until fully initialised
     connections.splice(connections.cbegin(), single_node_holder);
+    
+    
+    
+    
+    
 }
 
 server::~server() {
@@ -214,6 +225,8 @@ server::~server() {
 static volatile void* donothing;
 void server::sanity(const std::vector<fpollfd> events) {
     
+    // this cannot create undefined behaviour that didn't already exist and it
+    // has some chance of catching it so why not.
     for(auto it = connections.cbegin(); it != connections.cend(); it++) { donothing = &it; }
     logger << "connections not corrupted" << std::endl;
     
@@ -229,6 +242,8 @@ void server::sanity(const std::vector<fpollfd> events) {
         
         file_assert(event.read or event.write, "polled event neither for read nor write");
         
+        
+        
         bool found = false;
         for(auto it = connections.cbegin(); it != connections.cend(); it++) {
             if(event_node == it) {
@@ -236,9 +251,21 @@ void server::sanity(const std::vector<fpollfd> events) {
                 break;
             }
         }
-        file_assert(found, "unknown event polled"); // fires
+        file_assert(found, "unknown event polled");
+        
+        if( event_node->activity == status::closing ) {
+            file_assert(!event.read, "closing connection polled for read");
+            file_assert(event.write, "closing connection polled but not for write");
+        }
+        
         
     }
+    for(const auto& c : connections) {
+        file_assert(c.activity != status::closed, "closed socket polled");
+    }
+    
+    
+    
     logger << "connections OK" << std::endl;
 }
 

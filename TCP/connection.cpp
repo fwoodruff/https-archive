@@ -47,7 +47,7 @@ connection::~connection() {
         try {
             context->del_fd(m_socket);
         } catch(const std::system_error& e) {
-            std::cerr << e.what() << std::endl;
+            logger << e.what() << std::endl;
         }
     }
 }
@@ -58,6 +58,7 @@ connection::~connection() {
 
 void connection::send_bytes_over_network() {
     logger << "connection::send_bytes_over_network()" << std::endl;
+    logger << "cap: " << write_buffer.capacity() << std::endl;
     switch(activity) {
         case status::read_only:
         case status::always_poll:
@@ -68,24 +69,33 @@ void connection::send_bytes_over_network() {
             file_assert(false, "cannot send bytes over closed connection");
             return;
     }
-    
+    logger << "a. " << std::flush;
     auto bytes = m_socket.send(write_buffer.data(), write_buffer.size(), 0);
+    logger << "b. " << bytes << ": " << std::flush;
     file_assert(bytes <= write_buffer.size(), "bytes <= write_buffer.size()");
-    
-    
-    
-    
+
+    logger << "c. " << std::flush;
     if(bytes == write_buffer.size()) {
+        logger << "d. " << std::flush;
         write_buffer.clear();
     } else {
-        write_buffer = write_buffer.substr(bytes);
+        logger << "e. " << std::flush;
+        auto tmp = write_buffer.substr(bytes);
+        logger << "ea. " << std::flush;
+        write_buffer = tmp;
     }
+    logger << "f. " << std::flush;
     if(write_buffer.empty() and activity == status::closing) {
+        logger << "g. " << std::flush;
         activity = status::closed;
     }
-    if(write_buffer.size() > 2'000'000) {
+    
+    
+    if(write_buffer.size() > 2000000) {
+        logger << "h. " << std::flush;
         throw std::runtime_error("too much requested");
     }
+    logger << "connection::send_bytes_over_network() end" << std::endl;
 }
 
 ustring connection::receive_bytes_from_network() {
@@ -107,12 +117,10 @@ ustring connection::receive_bytes_from_network() {
 ssize_t connection::queue_bytes_for_write(ustring bytes) {
     logger << "connection::queue_bytes_for_write()" << std::endl;
     write_buffer.append(bytes);
-    
-
     return write_buffer.size();
 }
 
-bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanoseconds> loop_time) noexcept {
+bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanoseconds> loop_time) {
     logger << "connection::handle_connection()" << std::endl;
     try {
         file_assert(primary_receiver != nullptr, "bad primary receiver");
@@ -126,6 +134,7 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                     write_buffer.append(st_msg.m_response);
                 }
                 if(event.write) {
+                    logger << "1: ";
                     send_bytes_over_network();
                 }
                 break;
@@ -136,39 +145,52 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                         
                         auto st_msg = primary_receiver->handle(out);
                         activity = st_msg.m_status;
+                        write_buffer.append(st_msg.m_response);
                     }
                 }
                 if(event.write) {
+                    logger << "2: ";
                     send_bytes_over_network();
                 }
                 break;
             case status::closing:
+                file_assert(!event.read, "closing socket polled for read");
+                
                 if(event.write) {
-                    send_bytes_over_network();
+                    logger << "3: ";
+                    send_bytes_over_network(); // this call broke
+                    
                 }
                 break;
             case status::closed:
-                assert(false);
+                file_assert(false, "closed socket polled");
                 
         }
     } catch(const std::runtime_error& e) {
+        logger << e.what() << std::endl;
         activity = status::closed;
+    } catch(...) {
+        file_assert(false, "uncaught exception in handle_connection");
     }
+    logger << "handled connection" << std::endl;
 
     m_time_set = loop_time;
     
-    bool poll_for_read =  (activity ==  status::read_only) or
+    bool poll_for_read  = (activity ==  status::read_only) or
                           (activity == status::always_poll and write_buffer.empty());
-    bool poll_for_write = (!write_buffer.empty() and activity != status::closed) or
-                          (activity == status::always_poll and write_buffer.empty());
-
+    bool poll_for_write = activity != status::closed and (!write_buffer.empty() or
+                          (activity == status::always_poll and write_buffer.empty()));
     // fix me
     context->mod_fd(m_socket, poll_for_read, poll_for_write);
+    logger << "dereference OK" << std::endl;
     
-    if(activity != status::closed) {
-        if(!write_buffer.empty()) {
-            file_assert(poll_for_write, "can poll for write");
-        }
+    if(activity == status::closed) {
+        file_assert(!poll_for_read, "polling for read on about to be deleted connection");
+        file_assert(!poll_for_write, "polling for write on about to be deleted connection");
+    }
+    
+    if(activity == status::closing) {
+        file_assert(!poll_for_read, "polling for read on closing socket");
     }
     
     return activity == status::closed;

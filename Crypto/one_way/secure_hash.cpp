@@ -160,7 +160,7 @@ sha256::sha256() noexcept  : datalen(0),  bitlen(0), data(), done(false) {
 sha256& sha256::update_impl(const uint8_t* const begin, size_t size) noexcept {
     //logger << "sha256::update()" << std::endl;
     for (size_t i = 0; i < size; ++i) {
-        file_assert(datalen < data.size());
+        file_assert(datalen < data.size(), "update_impl broken");
         data[datalen++] = begin[i];
         if (datalen == 64) {
             sha256_transform(state, data);
@@ -349,7 +349,7 @@ ustring hmac::hash() && {
     //logger << "hmac::hash()" << std::endl;
     std::vector<uint8_t> opadkey;
     opadkey.resize(m_factory->get_block_size());
-    file_assert(opadkey.size() == 64);
+    file_assert(opadkey.size() == 64, "bad opadkey size");
     std::transform(KeyPrime.cbegin(), KeyPrime.cend(), opadkey.begin(), [](uint8_t c){return c ^ 0x5c;});
     auto hsh = m_hasher->hash();
     file_assert(!hsh.empty(), "empty hash");

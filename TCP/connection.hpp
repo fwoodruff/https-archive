@@ -49,7 +49,7 @@ class poll_context;
 class connection {
 private:
     ustring write_buffer;
-    size_t vec_start = 0;
+    //size_t vec_start = 0;
     time_point<steady_clock> m_time_set;
 
     poll_context* context = nullptr;
@@ -74,7 +74,7 @@ public:
     connection& operator=(const connection& other) = delete;
 
     // returns true if the connection finished
-    bool handle_connection(fpollfd, time_point<steady_clock,nanoseconds>) noexcept;
+    bool handle_connection(fpollfd, time_point<steady_clock,nanoseconds>);
     std::unique_ptr<receiver> primary_receiver;
 
 };

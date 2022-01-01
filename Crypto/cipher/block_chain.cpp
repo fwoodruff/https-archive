@@ -126,7 +126,7 @@ tls_record AES_CBC_SHA::decrypt(tls_record record) {
     std::array<uint8_t, 16> record_IV {};
     constexpr auto blocksize = record_IV.size();
     
-    file_assert(record.contents.size() >= 16);
+    file_assert(record.contents.size() >= 16, "bad record size");
     std::copy(&*record.contents.begin(),&record.contents[blocksize], record_IV.begin() );
 
     

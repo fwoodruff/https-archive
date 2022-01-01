@@ -186,24 +186,24 @@ std::vector<std::string> get_method(const std::string& header) {
     std::vector<std::string> out;
     const auto line_length = header.find(endline);
     file_assert(line_length != std::string::npos, "header did not contain an endline");
-    
+
     size_t distance = 0;
     while(true) {
-        const auto n = header.find(delimiter,distance);
+        const auto n = header.find(delimiter,distance); // 8
 
         if (n == std::string::npos or n >= line_length) {
-            file_assert (distance < line_length, "get method distance < line_length");
+            file_assert (distance <= line_length, "get method distance <= line_length"); // fired
             const std::string ntoken = header.substr(distance, line_length-distance);
             if(ntoken != "") {
                 out.push_back(std::move(ntoken));
             }
             break;
         }
-        const std::string token = header.substr(distance, n-distance);
+        const std::string token = header.substr(distance, n-distance); // GET/test
         if(token != "") {
             out.push_back(std::move(token));
         }
-        distance = n + delimiter.size();
+        distance = n + delimiter.size(); // 9
     }
     return out;
 }

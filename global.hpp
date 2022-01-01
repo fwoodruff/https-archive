@@ -48,7 +48,8 @@ using ustring = std::basic_string<uint8_t>;
 
 inline void write_int(uint64_t x, uint8_t* const s, short n) noexcept {
     //logger << "write_int()" << std::endl;
-    assert(x < (1ull << (n*8)) or n == sizeof(uint64_t));
+    assert(n >= sizeof(uint64_t) or x < (1ull << (n*8)));
+    assert(n <= sizeof(uint64_t)); // avoids ub
     for(short i = n-1; i >= 0; i--) {
         s[i] = static_cast<uint8_t>(x) & 0xffU;
         x>>=8;
@@ -88,7 +89,7 @@ struct tls_record {
 } // namespace fbw
 
 
-inline void file_assert(bool assertion, const std::string_view& message = "") {
+inline void file_assert(bool assertion, const std::string_view& message) {
 #ifndef NDEBUG
     if(!assertion) {
         logger << message << std::endl;

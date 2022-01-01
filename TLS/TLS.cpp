@@ -83,9 +83,9 @@ status_message TLS::handle(ustring input) noexcept {
         r.minor_version = 0x03;
         r.contents = { static_cast<uint8_t>(e.m_l), static_cast<uint8_t>(e.m_d) };
         if(handshake_done) {
+            file_assert(is_client_hello_done, "handshake done without hello");
             r = cipher_context->encrypt(r);
         }
-        
         return {r.serialise(), status::closing };
     } catch(const std::out_of_range& e) {
         logger << e.what() << std::endl;
@@ -186,6 +186,7 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
     size_t ciphers_len = safe_asval(hello, idx, 2);
     hello.at(idx+ ciphers_len + 2);
     cipher = cipher_choice(hello.substr(idx+2, ciphers_len));
+    is_client_hello_done = true;
     
     idx += ciphers_len + 2;
     // compression
@@ -216,8 +217,11 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
         throw ssl_error("bad extension", AlertLevel::fatal, AlertDescription::internal_error);
     }
 
-
-    handshake_hasher->update(hello);
+    if(is_client_hello_done) {
+        handshake_hasher->update(hello);
+    } else {
+        throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
+    }
     
     output.m_response.append(server_hello().serialise());
     output.m_response.append(server_certificate().serialise());
@@ -245,7 +249,12 @@ tls_record TLS::server_hello() {
     hello_record.contents.append({0x00, 0x05, 0xff, 0x01, 0x00, 0x01, 0x00}); // extensions
     write_int(hello_record.contents.size()-4, &hello_record.contents[1], 3);
 
-    handshake_hasher->update(hello_record.contents);
+    if(is_client_hello_done) {
+        handshake_hasher->update(hello_record.contents);
+    } else {
+        throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
+    }
+    
     return hello_record;
 }
 
@@ -274,7 +283,13 @@ tls_record TLS::server_certificate(){
     write_int(certificate_record.contents.size()-4, &certificate_record.contents[1], 3);
     write_int(certificate_record.contents.size()-7, &certificate_record.contents[4], 3);
 
-    handshake_hasher->update(certificate_record.contents);
+    
+    if(is_client_hello_done) {
+        handshake_hasher->update(certificate_record.contents);
+    } else {
+        throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
+    }
+    
     return certificate_record;
 }
 
@@ -300,6 +315,11 @@ tls_record TLS::server_key_exchange(){
     signed_empheral_key.append({static_cast<uint8_t>(pubkey_ephem.size())});
     signed_empheral_key.append(pubkey_ephem.cbegin(), pubkey_ephem.cend());
 
+    
+    if(!is_client_hello_done) {
+        throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
+    }
+    
     auto hashctx = hasher_factory->clone();
     
     hashctx->update(m_client_random);
@@ -328,6 +348,11 @@ tls_record TLS::server_key_exchange(){
     record.contents.append(signature);
 
     write_int(record.contents.size()-4, &record.contents[1], 3);
+    
+    if(!is_client_hello_done) {
+        throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
+    }
+    
     handshake_hasher->update(record.contents);
     return record;
 }
@@ -339,6 +364,11 @@ tls_record TLS::server_hello_done() {
     record.major_version = 3;
     record.minor_version = 3;
     record.contents = { static_cast<uint8_t>(HandshakeType::server_hello_done), 0x00, 0x00, 0x00 };
+    
+    if(!is_client_hello_done) {
+        throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
+    }
+    
     handshake_hasher->update(record.contents);
     return record;
 }
@@ -357,10 +387,17 @@ void TLS::handle_client_key_exchange(const ustring& key_exchange) {
         throw ssl_error("bad public key", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
     std::copy(&key_exchange[5], &key_exchange[37], client_public_key.begin());
+    
+    if(!is_client_hello_done) {
+        throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
+    }
+    
     master_secret = make_master_secret(hasher_factory, server_private_key_ephem, client_public_key, m_server_random, m_client_random);
     
     // AES_256_CBC_SHA256 has the largest amount of material at 128 bytes
     ustring key_material = expand_master(master_secret, m_server_random, m_client_random, 128);
+    
+    
     cipher_context->set_key_material(key_material);
     handshake_hasher->update(key_exchange);
 }
@@ -376,7 +413,7 @@ void TLS::client_change_cipher_spec(const ustring& change_message) {
 
 void TLS::client_handshake_finished(const ustring& finish, status_message& output) {
     logger << "TLS::client_handshake_finished()" << std::endl;
-    file_assert(finish.at(0) == static_cast<uint8_t>(HandshakeType::finished));
+    file_assert(finish.at(0) == static_cast<uint8_t>(HandshakeType::finished), "bad record type");
     const size_t len = safe_asval(finish,1,3);
     if(len != 12) {
         throw ssl_error("bad verification", AlertLevel::fatal, AlertDescription::handshake_failure);
@@ -384,7 +421,10 @@ void TLS::client_handshake_finished(const ustring& finish, status_message& outpu
     const std::string seed_signed = "client finished";
     ustring seed;
     seed.append(seed_signed.cbegin(), seed_signed.cend());
-    auto local_hasher = handshake_hasher->clone(); // placeholder
+    if(!is_client_hello_done) {
+        throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
+    }
+    auto local_hasher = handshake_hasher->clone();
     auto handshake_hash = local_hasher->hash();
     seed.append(handshake_hash.cbegin(), handshake_hash.cend());
 
@@ -435,6 +475,12 @@ void TLS::server_handshake_finished(status_message& output) {
     ustring seed;
     seed.append(seedsi.cbegin(),seedsi.cend());
     
+    
+    if(!is_client_hello_done) {
+        throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
+    }
+    
+    
     auto local_hasher = handshake_hasher->clone(); // the others?
     auto handshake_hash = local_hasher->hash();
     file_assert(handshake_hash.size() == 32, "handshake hash size bad");
@@ -478,6 +524,7 @@ void TLS::client_application_data(const ustring& application_data, status_messag
         out.minor_version = 3;
         out.contents.append(&app_out.m_response[i], &app_out.m_response[std::min(i+record_size, app_out.m_response.size())]);
         if(handshake_done) {
+            file_assert(is_client_hello_done, "handshake finished without client hello");
             out = cipher_context->encrypt(std::move(out));
         } else {
             throw ssl_error("Unwilling to respond on unencrypted channel", AlertLevel::fatal, AlertDescription::insufficient_security);
@@ -494,6 +541,7 @@ void TLS::tls_notify_close(status_message& output) {
     close_record.minor_version = 3;
     close_record.contents = {1,0};
     if(handshake_done) {
+        file_assert(is_client_hello_done, "handshake finished without client hello");
         close_record = cipher_context->encrypt(std::move(close_record));
     }
     output.m_response.append(close_record.serialise());
@@ -539,6 +587,7 @@ void TLS::client_heartbeat(const ustring& heartbeat_message, status_message& out
     heartbeat_record.contents = {2};
     
     if(handshake_done) {
+        file_assert(is_client_hello_done, "handshake finished without client hello");
         heartbeat_record = cipher_context->encrypt(std::move(heartbeat_record));
     }
     output.m_response.append(heartbeat_record.serialise());
@@ -562,6 +611,8 @@ std::array<uint8_t,48> TLS::make_master_secret(const std::unique_ptr<const hash_
     seed.append(seedsi.cbegin(),seedsi.cend());
     seed.append(client_random.cbegin(), client_random.cend());
     seed.append(server_random.cbegin(), server_random.cend());
+    
+    
     
     const auto ctx = hmac(hash_factory->clone(), premaster_secret);
     auto ctx2 = ctx;
@@ -622,6 +673,10 @@ ustring TLS::expand_master(const std::array<unsigned char,48>& master,
     useed.append(server_random.cbegin(), server_random.cend());
     useed.append(client_random.cbegin(), client_random.cend());
     auto a = useed;
+    
+    if(!is_client_hello_done) {
+        throw ssl_error("expand_master bad", AlertLevel::fatal, AlertDescription::internal_error);
+    }
     const auto ctx = hmac(hasher_factory->clone(), master);
     auto ctx2 = ctx;
     while(output.size() < len) {
@@ -664,6 +719,8 @@ std::optional<tls_record> try_extract_record(ustring& input) {
 
 void TLS::test_handshake() && {
     // test vectors found at https://tls.ulfheim.net/
+    
+    is_client_hello_done = true;
     
     hasher_factory = std::make_unique<const sha256>();
     

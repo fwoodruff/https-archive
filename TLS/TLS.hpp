@@ -28,6 +28,9 @@ class TLS final : public receiver {
     unsigned short cipher;
     
     bool handshake_done = false;
+    bool is_client_hello_done = false;
+    
+    
     std::array<uint8_t,32> client_public_key;
     std::array<uint8_t,32> server_private_key_ephem;
     
