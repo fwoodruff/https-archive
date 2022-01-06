@@ -27,8 +27,11 @@
 namespace fbw {
 
 // tidy this up with all arguments
-connection::connection() :
-activity(status::read_only), primary_receiver(nullptr) {
+connection::connection(time_point<steady_clock> tp, std::unique_ptr<receiver> rcv, poll_context* ctx, client_socket socket) :
+activity(status::read_only), primary_receiver (std::move(rcv)), write_buffer {}, m_time_set(tp), context(ctx), m_socket(std::move(socket)) {
+    
+    
+
     logger << "connection::connection()" << std::endl;
 }
 
@@ -59,6 +62,10 @@ connection::~connection() {
 void connection::send_bytes_over_network() {
     logger << "connection::send_bytes_over_network()" << std::endl;
     logger << "cap: " << write_buffer.capacity() << std::endl;
+    
+    logger << "siz: " << write_buffer.size() << std::endl;
+    logger << "write_buffer ptr:" << std::hex << reinterpret_cast<uintptr_t>(write_buffer.data()) << std::endl;
+    
     switch(activity) {
         case status::read_only:
         case status::always_poll:
@@ -70,7 +77,7 @@ void connection::send_bytes_over_network() {
             return;
     }
     logger << "a. " << std::flush;
-    auto bytes = m_socket.send(write_buffer.data(), write_buffer.size(), 0);
+    auto bytes = m_socket.send(write_buffer.data(), write_buffer.size(), MSG_NOSIGNAL);
     logger << "b. " << bytes << ": " << std::flush;
     file_assert(bytes <= write_buffer.size(), "bytes <= write_buffer.size()");
 
@@ -167,6 +174,7 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                 
         }
     } catch(const std::runtime_error& e) {
+        logger << "exception" << std::endl;
         logger << e.what() << std::endl;
         activity = status::closed;
     } catch(...) {
