@@ -49,11 +49,11 @@ class poll_context;
 class connection {
 private:
     ustring write_buffer;
-    //size_t vec_start = 0;
     time_point<steady_clock> m_time_set;
 
-    poll_context* context = nullptr;
+    poll_context* context;
     client_socket m_socket;
+    std::unique_ptr<receiver> primary_receiver;
     
     friend class server;
 
@@ -64,8 +64,8 @@ private:
     void send_bytes_over_network();
 
 public:
-
-    connection();
+    connection(time_point<steady_clock> tp, std::unique_ptr<receiver> rcv, poll_context* ctx, client_socket socket);
+    
     
     void push_receiver(std::unique_ptr<receiver> r);
     
@@ -75,7 +75,7 @@ public:
 
     // returns true if the connection finished
     bool handle_connection(fpollfd, time_point<steady_clock,nanoseconds>);
-    std::unique_ptr<receiver> primary_receiver;
+    
 
 };
 
