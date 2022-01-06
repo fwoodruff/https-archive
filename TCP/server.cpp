@@ -175,51 +175,29 @@ void server::serve_some() {
 
 
 
-
-
-
 /*
  Add new connections to the connection list
  */
 void server::accept_connection(tp loop_time) {
     logger << "server::accept_connection()" << std::endl;
-    clist single_node_holder;
-
-    single_node_holder.emplace_back();
-    auto& node = single_node_holder.back();
-
-    node.push_receiver(m_factory());
     
-
-    node.m_time_set = loop_time;
     struct sockaddr_storage cli_addr;
     socklen_t sin_len = sizeof(cli_addr);
-    node.m_socket = m_sock.accept((sockaddr *) &cli_addr, &sin_len);
-    node.m_socket.fcntl(F_SETFL, O_NONBLOCK);
+    auto skt = m_sock.accept((sockaddr *) &cli_addr, &sin_len);
+    skt.fcntl(F_SETFL, O_NONBLOCK);
     
-    auto [full_name, ip ] = node.m_socket.cli_socketinfo();
+    auto [full_name, ip ] = skt.cli_socketinfo();
     logger << full_name << " ... " << ip << std::endl;
+
+    connections.emplace_front(loop_time, m_factory(), &m_poller, std::move(skt));
     
-    m_poller.add_fd(node.m_socket, single_node_holder.begin(), true, false);
-    node.context = &m_poller;
-    
-    
-    
-    
-    // keep new connections in this scope until fully initialised
-    connections.splice(connections.cbegin(), single_node_holder);
-    
-    
-    
-    
-    
+    m_poller.add_fd(connections.front().m_socket, connections.begin(), true, false);
+
 }
 
 server::~server() {
     logger << "~server()" << std::endl;
 }
-
-
 
 
 static volatile void* donothing;
