@@ -26,12 +26,17 @@
 
 namespace fbw {
 
+
+
 // tidy this up with all arguments
 connection::connection(time_point<steady_clock> tp, std::unique_ptr<receiver> rcv, poll_context* ctx, client_socket socket) :
-activity(status::read_only), primary_receiver (std::move(rcv)), write_buffer {}, m_time_set(tp), context(ctx), m_socket(std::move(socket)) {
+    write_buffer {},
+    m_time_set(tp),
+    context(ctx),
+    m_socket(std::move(socket)),
+    primary_receiver (std::move(rcv)),
+    activity(status::read_only) {
     
-    
-
     logger << "connection::connection()" << std::endl;
 }
 

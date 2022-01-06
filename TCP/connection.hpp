@@ -50,14 +50,14 @@ class connection {
 private:
     ustring write_buffer;
     time_point<steady_clock> m_time_set;
-
     poll_context* context;
     client_socket m_socket;
     std::unique_ptr<receiver> primary_receiver;
+    status activity;
     
     friend class server;
 
-    status activity;
+    
     
     ustring receive_bytes_from_network();
     ssize_t queue_bytes_for_write(ustring bytes);
