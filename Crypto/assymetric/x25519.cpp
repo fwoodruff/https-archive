@@ -1,10 +1,9 @@
 //
-//  curve25519.cpp
-//  curve25519
+//  x25519.cpp
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 08/08/2021.
 //
-
 
 #include "bignum.hpp"
 #include "x25519.hpp"
@@ -15,8 +14,6 @@
 #include <sstream>
 #include <iostream>
 #include <climits>
-
-
 
 namespace fbw::curve25519 {
 

@@ -1,11 +1,14 @@
 //
 //  galois_counter.cpp
-//  https_server
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 17/12/2021.
 //
 
+// Abridged from
 // https://github.com/michaeljclark/aes-gcm/blob/master/src/aes-gcm.c
+// I added a GCM cipher because Chrome does not support CBC ciphers.
+
 
 #include "galois_counter.hpp"
 #include "global.hpp"
@@ -20,34 +23,27 @@
 #include <arpa/inet.h>
 #include <sys/types.h>
 
-using aes_uchar = unsigned char;
-typedef unsigned short      aes_ushort;
-typedef unsigned int        aes_uint;
-typedef unsigned long long  aes_ulong;
-typedef signed char         aes_char;
-typedef signed short        aes_short;
-typedef signed int          aes_int;
-typedef signed long long    aes_long;
-#define AES_BLOCK_SIZE 16
+
+
+constexpr int AES_BLOCK_SIZE = 16;
 
 
 
 namespace fbw::aes {
 
 
-static inline aes_uint AES_GET_BE32(const aes_uchar *a)
-{
+static inline uint32_t AES_GET_BE32(const uint8_t *a) {
     return (a[0] << 24) | (a[1] << 16) | (a[2] << 8) | a[3];
 }
 
-static inline void AES_PUT_BE32(aes_uchar *a, aes_uint val) {
+static inline void AES_PUT_BE32(uint8_t *a, uint32_t val) {
     a[0] = (val >> 24) & 0xff;
     a[1] = (val >> 16) & 0xff;
     a[2] = (val >> 8) & 0xff;
     a[3] = val & 0xff;
 }
 
-static inline void AES_PUT_BE64(aes_uchar *a, aes_ulong val)
+static inline void AES_PUT_BE64(uint8_t *a, uint64_t val)
 {
     a[0] = val >> 56;
     a[1] = val >> 48;
@@ -60,24 +56,24 @@ static inline void AES_PUT_BE64(aes_uchar *a, aes_ulong val)
 }
 
 static void inc32(aes_block& block) {
-    aes_uint val;
+    uint32_t val;
     val = AES_GET_BE32(&block[block.size() - 4]);
     val++;
     AES_PUT_BE32(&block[block.size() - 4], val);
-    file_assert(val != aes_uint(-1), "2^64 increments should be infeasible");
+    file_assert(val != uint32_t(-1), "2^64 increments should be infeasible");
 }
 
 
-static void xor_block(aes_uchar *dst, const aes_uchar *src) {
+static void xor_block(uint8_t *dst, const uint8_t *src) {
     for(int i = 0; i < 16; i ++) {
         *dst++ ^= *src++;
     }
 }
 
 
-static void shift_right_block(aes_uchar *v)
+static void shift_right_block(uint8_t *v)
 {
-    aes_uint val;
+    uint32_t val;
 
     val = AES_GET_BE32(v + 12);
     val >>= 1;
@@ -104,9 +100,9 @@ static void shift_right_block(aes_uchar *v)
 
 
 
-static void gf_mult(const aes_uchar *x, const aes_uchar *y, aes_uchar *z)
+static void gf_mult(const uint8_t *x, const uint8_t *y, uint8_t *z)
 {
-    aes_uchar v[16];
+    uint8_t v[16];
     int i, j;
 
     memset(z, 0, 16);
@@ -136,9 +132,9 @@ static void gf_mult(const aes_uchar *x, const aes_uchar *y, aes_uchar *z)
 
 
 // same as original
-static void ghash(const aes_uchar *h, const aes_uchar *x, size_t xlen, aes_uchar *y) {
-    const aes_uchar *xpos = x;
-    aes_uchar tmp[16];
+static void ghash(const uint8_t *h, const uint8_t *x, size_t xlen, uint8_t *y) {
+    const uint8_t *xpos = x;
+    uint8_t tmp[16];
 
     size_t m = xlen / 16;
 
@@ -167,13 +163,13 @@ static void ghash(const aes_uchar *h, const aes_uchar *x, size_t xlen, aes_uchar
 }
 
 
-static void aes_gctr(roundkey aesk, aes_block cb, const aes_uchar *x, size_t xlen, aes_uchar *y)
+static void aes_gctr(roundkey aesk, aes_block cb, const uint8_t *x, size_t xlen, uint8_t *y)
 {
     size_t i, n, last;
     
     
-    const aes_uchar *xpos = x;
-    aes_uchar *ypos = y;
+    const uint8_t *xpos = x;
+    uint8_t *ypos = y;
 
     if (xlen == 0)
         return;
@@ -211,7 +207,7 @@ static void aes_gctr(roundkey aesk, aes_block cb, const aes_uchar *x, size_t xle
 
 static aes_block aes_gcm_prepare_j0(const ustring& iv, const aes_block& H)
 {
-    aes_uchar len_buf[16];
+    uint8_t len_buf[16];
     
     aes_block J0 {};
 
@@ -230,8 +226,8 @@ static aes_block aes_gcm_prepare_j0(const ustring& iv, const aes_block& H)
 }
 
 
-static void aes_gcm_gctr(roundkey aesk, const aes_block& J0, const aes_uchar *in, size_t len,
-             aes_uchar *out)
+static void aes_gcm_gctr(roundkey aesk, const aes_block& J0, const uint8_t *in, size_t len,
+                         uint8_t *out)
 {
     if (len == 0) {
         return;
@@ -243,8 +239,8 @@ static void aes_gcm_gctr(roundkey aesk, const aes_block& J0, const aes_uchar *in
 
 
 static ustring aes_gcm_ghash(const aes_block& H, const ustring& aad,
-              const aes_uchar *crypt, size_t crypt_len) {
-    aes_uchar len_buf[16];
+              const uint8_t *crypt, size_t crypt_len) {
+    uint8_t len_buf[16];
     
     ustring S {};
     S.resize(16);

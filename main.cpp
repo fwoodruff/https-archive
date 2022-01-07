@@ -1,5 +1,6 @@
 //
 //  main.cpp
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 08/07/2021.
 //
@@ -22,23 +23,7 @@
 #include <thread>
 
 
-class redirect : public fbw::receiver {
-public:
-    fbw::status_message handle(fbw::ustring in) noexcept override {
-        auto x = std::string().append(in.begin(), in.end());
-        std::cout << x << std::endl;
-        
-        std::string s = "HTTP/1.1 301 Moved Permanently\r\nLocation:\r\nhttps://localhost/index.html\r\n\r\n";
-        return {fbw::ustring().append(s.begin(), s.end()),fbw::status::closing};
-    }
-};
-
-
-// look at I/O for requesting a PDF to understand why it is occasionally so slow
-
-
-
-void loop() {
+int main() {
     if(logger.fail()) {
         std::cout << "logger problem" << std::endl;
         std::terminate();
@@ -83,11 +68,6 @@ void loop() {
             }
         };
         
-        
-        
-        
-            
-        
         while(true) {
             logger << "loop count: " << loop_counter << std::endl;
             loop_counter++;
@@ -107,31 +87,4 @@ void loop() {
         logger << "unexpected server close\n" << std::endl;
     }
     logger << "end main()" << std::endl;
-}
-
-void red() {
-    try {
-        fbw::server redirect_server {
-             "http", [] {
-                 return std::make_unique<redirect>();
-             }
-        };
-        while(true) {
-            redirect_server.serve_some();
-        }
-    } catch(...) {
-        logger << "redirect failed()" << std::endl;
-    }
-}
-
-
-
-
-
-int main() {
-    
-
-    loop();
-
-    
 }

@@ -1,6 +1,6 @@
 //
 //  galois_counter.hpp
-//  https_server
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 17/12/2021.
 //

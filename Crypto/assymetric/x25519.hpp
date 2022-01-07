@@ -1,6 +1,6 @@
 //
-//  curve25519.hpp
-//  curve25519
+//  x25519.hpp
+//  x25519
 //
 //  Created by Frederick Benjamin Woodruff on 08/08/2021.
 //
@@ -10,12 +10,14 @@
 
 #include <array>
 
+// Performs elliptic curve Diffie Hellman
+
 // get secret
 namespace fbw::curve25519 {
 [[nodiscard]] std::array<unsigned char,32>
     multiply(const std::array<unsigned char,32>& num,
                                   const std::array<unsigned char,32>& pnt) noexcept;
-    // make key pair
+// make key pair
 [[nodiscard]] std::array<unsigned char,32>
     base_multiply(const std::array<unsigned char,32>& num) noexcept;
 

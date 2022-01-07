@@ -1,6 +1,6 @@
 //
-//  CBC.cpp
-//  https_server
+//  block_chain.cpp
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 12/12/2021.
 //
@@ -35,9 +35,6 @@ void AES_CBC_SHA::set_key_material(ustring expanded_master)  {
     
     auto it = expanded_master.begin();
 
-    
-    
-    
     std::copy_n(it, client_MAC_key.size(), client_MAC_key.begin());
     it += client_MAC_key.size();
     std::copy_n(it, server_MAC_key.size(), server_MAC_key.begin());
@@ -46,7 +43,6 @@ void AES_CBC_SHA::set_key_material(ustring expanded_master)  {
     it += client_write_key.size();
     std::copy_n(it, server_write_key.size(), server_write_key.begin());
     it += server_write_key.size();
-    
     
     client_write_round_keys = aes_key_schedule(client_write_key);
     server_write_round_keys = aes_key_schedule(server_write_key);
@@ -180,7 +176,5 @@ tls_record AES_CBC_SHA::decrypt(tls_record record) {
     record.contents = std::move(plaintext);
     return record;
 }
-
-
 
 } // namespace fbw::aes

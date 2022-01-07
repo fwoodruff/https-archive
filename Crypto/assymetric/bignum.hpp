@@ -1,6 +1,6 @@
 //
 //  bignum.hpp
-//  basichttps
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 05/12/2021.
 //
@@ -24,8 +24,8 @@ namespace fbw {
  Unsigned only
  Operations are constant time [To do: implement constant time conditional copy]
  
- Addition and subtraction overflow.
- Multiplication and division change width and do not overflow.
+ Addition and subtraction may overflow.
+ Multiplication and division change width so do not overflow.
  
  Friends with 'REDC' functions.
  REDC_P(X) efficiently calculates (X * modular_inverse(R)) mod P
@@ -55,7 +55,7 @@ public:
     using radix = uint32_t;
     using radix2 = uint64_t;
 #endif
-//private:
+//private: // Linux doesn't like this template friend trick so must expose as public
     constexpr static int RADIXBITS = sizeof(radix) * CHAR_BIT;
     constexpr static int INTBYTES = (INTBITS + CHAR_BIT - 1)/CHAR_BIT;
     template<int b = INTBITS>

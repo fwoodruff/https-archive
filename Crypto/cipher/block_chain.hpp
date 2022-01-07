@@ -1,6 +1,6 @@
 //
-//  CBC_mode.hpp
-//  basichttps
+//  block_chain.hpp
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 12/12/2021.
 //
@@ -11,14 +11,14 @@
 #include "AES.hpp"
 #include "cipher_base.hpp"
 #include "global.hpp"
-#include <vector>
 
+#include <vector>
 #include <stdio.h>
 
 namespace fbw::aes {
 
 class AES_CBC_SHA : public cipher_base {
-public: // temp
+private:
     roundkey server_write_round_keys;
     roundkey client_write_round_keys;
     std::array<uint8_t, 20> server_MAC_key;
@@ -30,8 +30,6 @@ public: // temp
     
 public:
     AES_CBC_SHA(size_t key_size);
-    
-    
     
     void set_key_material(ustring material) override;
     tls_record encrypt(tls_record record) override;

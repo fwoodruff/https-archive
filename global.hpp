@@ -1,12 +1,12 @@
 //
-//  glob.h
-//  basichttps
+//  global.hpp
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 07/12/2021.
 //
 
-#ifndef glob_hpp
-#define glob_hpp
+#ifndef global_hpp
+#define global_hpp
 
 
 #include <cassert>
@@ -90,14 +90,12 @@ struct tls_record {
 
 
 inline void file_assert(bool assertion, const std::string_view& message) {
-#ifndef NDEBUG
     if(!assertion) {
         logger << message << std::endl;
         logger.close();
         std::terminate();
     }
-#endif
 }
 
 
-#endif /* glob_hpp */
+#endif /* global_hpp */

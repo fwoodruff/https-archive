@@ -1,6 +1,6 @@
 //
 //  AES.cpp
-//  AES_DIY
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 03/09/2021.
 //
@@ -166,7 +166,7 @@ constexpr auto GMULRES = []() constexpr {
 uint8_t GMul(uint8_t a, uint8_t b) {
     file_assert(a < 16, "array out of bounds");
     // I moved the table outside of function scope.
-    // Without optimisation flags the compiler was memmoving
+    // Without optimisation flags the compiler was copying
     // the whole table every call.
     return GMULRES[a][b];
 }
@@ -268,8 +268,6 @@ roundkey aes_key_schedule(const aeskey& AESkey) {
 /*
  performs the encryption on a block
  */
-
-
 aes_block aes_encrypt(aes_block plain_block, const roundkey& roundkeys) noexcept {
     const ssize_t Nra = roundkeys.size()/4 - 1;
     

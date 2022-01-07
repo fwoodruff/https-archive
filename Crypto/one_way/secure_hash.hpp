@@ -1,3 +1,10 @@
+//
+//  secure_hash.cpp
+//  HTTPS Server
+//
+//  Created by Frederick Benjamin Woodruff on 07/12/2021.
+//
+
 
 #ifndef secure_hash
 #define secure_hash
@@ -21,7 +28,6 @@ public:
     sha256& update_impl(const uint8_t* begin, size_t size) noexcept override;
     
     ustring hash() && override;
-    //ustring hash() const & override;
     [[nodiscard]] size_t get_block_size() const noexcept override;
 private:
     size_t datalen;
@@ -41,7 +47,6 @@ public:
     sha1& update_impl(const uint8_t* begin, size_t size) noexcept override;
     
     ustring hash() && override;
-    //ustring hash() const & override;
     [[nodiscard]] size_t get_block_size() const noexcept override;
 
 private:
@@ -71,18 +76,12 @@ public:
     
     ustring hash() && override;
     
-    // weird compiler edge case:
-    // override only the r-value reference qualified member function
-    // does something odd here.
+    // weird edge case:
+    // overriding only the r-value reference qualified member function won't compile
     ustring hash() const & override;
     
     [[nodiscard]] size_t get_block_size() const noexcept override;
-    
-    
-    
-    
-    //[[nodiscard]] ustring hash() const &;
-    //ustring hash() && ;
+
 
     hmac(const hmac &);
     hmac& operator=(const hmac &);
@@ -93,8 +92,6 @@ template<typename T>
 hmac::hmac(std::unique_ptr<hash_base> hasher, const T& key) :
     hmac(std::move(hasher), key.data(), key.size())
 {}
-
-
 
 } // namespace fbw
 

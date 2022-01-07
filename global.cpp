@@ -1,6 +1,6 @@
 //
-//  glob.cpp
-//  https_server
+//  global.cpp
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 13/12/2021.
 //

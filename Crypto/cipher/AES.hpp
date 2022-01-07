@@ -1,6 +1,6 @@
 //
 //  AES.hpp
-//  AES_DIY
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 03/09/2021.
 //
@@ -17,9 +17,6 @@
 namespace fbw::aes {
 
 
-/*
- AES encryption 
- */
 
 using byte_word  = std::array<uint8_t,4>;
 using aes_block = std::array<uint8_t, 16>;
@@ -37,7 +34,7 @@ using aeskey = typename std::vector<uint8_t>;
 [[nodiscard]] aes_block aes_decrypt(aes_block ciphertext, const roundkey& roundkeys) noexcept;
 
 
-} //fbw
+} // namespace fbw
 
 
 

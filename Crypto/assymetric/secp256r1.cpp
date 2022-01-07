@@ -1,6 +1,6 @@
 //
-//  curve25519.cpp
-//  curve25519
+//  secp256r1.cpp
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 08/08/2021.
 //
@@ -29,6 +29,9 @@ struct affine_point256 {
 };
 
 
+// Q is the group order of the curve and depends on P
+// P has the property that all points are on the main group of order Q
+// G is out of thin air
 constexpr ct_u256 secp256r1_q = "0xffffffff00000000ffffffffffffffffbce6faada7179e84f3b9cac2fc632551"_xl;
 constexpr ct_u256 secp256r1_p = "0xffffffff00000001000000000000000000000000ffffffffffffffffffffffff"_xl;
 constexpr ct_u256 secp256r1_gx = "0x6b17d1f2e12c4247f8bce6e563a440f277037d812deb33a0f4a13945d898c296"_xl;
@@ -36,6 +39,7 @@ constexpr ct_u256 secp256r1_gy = "0x4fe342e2fe1a7f9b8ee7eb4a7c0f9e162bce33576b31
 constexpr ct_u256 MagicP = "0xffffffff00000002000000000000000000000001000000000000000000000001"_xl;
 constexpr ct_u256 MagicQ = "0x60d06633a9d6281c50fe77ecc588c6f648c944087d74d2e4ccd1c8aaee00bc4f"_xl;
 
+// R mod P
 constexpr ct_u256 R_P = "0xfffffffeffffffffffffffffffffffff000000000000000000000001"_xl;
 constexpr ct_u256 RR_P = "0x4fffffffdfffffffffffffffefffffffbffffffff0000000000000003"_xl;
 constexpr ct_u256 RR_Q = "0x66e12d94f3d956202845b2392b6bec594699799c49bd6fa683244c95be79eea2"_xl;
@@ -69,16 +73,6 @@ constexpr ct_u256 REDCQ(ct_u512 T) noexcept {
 
 
 constexpr affine_point256 POINT_AT_INFINITY { secp256r1_p, secp256r1_p, "0x0"_xl};
-/*
-constexpr affine_point256 Gaff = {
-    REDC(secp256r1_gx * RR_P),
-    REDC(secp256r1_gy * RR_P),
-    REDC("0x1"_xl * RR_P)
-};*/
-
-
-
-
 
 ct_u256 add_mod(ct_u256 x, ct_u256 y , ct_u256 mod) noexcept {
     file_assert(x < mod, "add_mod(): x < mod" );
@@ -99,7 +93,6 @@ ct_u256 sub_mod(ct_u256 x, ct_u256 y, ct_u256 mod) noexcept {
         return (mod - y) + x;
     }
 }
-
 
 // computes a' such that a * a' = 1 mod P
 constexpr ct_u256 modular_inverse(const ct_u256& a) noexcept {
@@ -126,11 +119,9 @@ constexpr ct_u256 invQ(const ct_u256& a) noexcept {
     auto th = "0x1"_xl;
     for (int i = 255; i >= 0; i--) {
         auto es = (secp256r1_q-"0x2"_xl)>>i;
-
         if(es == "0x0"_xl) {
             continue;
         }
-
         auto thh = th * th;
         auto t = thh % secp256r1_q;
         auto y = t * a;
@@ -183,6 +174,11 @@ affine_point256 point_add(const affine_point256& P, const affine_point256& Q) no
     auto S2 = REDC(Q.ycoord * Z13);
     if (U1 == U2) {
         if (S1 != S2) {
+            // pathological and untested
+            // I'll cross this bridge if I get to it
+            // but I believe this is unreachable because
+            // the server chooses what is signed
+            logger << "Point at infinity" << std::endl;
             return POINT_AT_INFINITY;
         } else {
             return point_double(P);
@@ -214,7 +210,7 @@ affine_point256 point_double(const affine_point256& P) noexcept {
     file_assert(P.ycoord <= secp256r1_p, "error in SECP point double input");
     
     if (P.ycoord == "0x0"_xl or P.ycoord == secp256r1_p) {
-        // probably buggy
+        logger << "PD Point at Infinity" << std::endl;
         return POINT_AT_INFINITY;
     }
     affine_point256 out;

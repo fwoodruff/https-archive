@@ -1,6 +1,6 @@
 //
 //  keccak.hpp
-//  piserver
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 16/07/2021.
 //
