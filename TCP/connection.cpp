@@ -141,13 +141,17 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
             //case status::dormant:
                 if(event.read) {
                     ustring out = receive_bytes_from_network();
-                    auto st_msg = primary_receiver->handle(out);
+                    auto st_msg = primary_receiver->handle(std::move(out));
+                    logger << "done primary_receiver->handle(out)" << std::endl;
                     activity = st_msg.m_status;
                     write_buffer.append(st_msg.m_response);
+                    logger << "w." << std::flush;
                 }
                 if(event.write) {
                     logger << "1: ";
                     send_bytes_over_network();
+                } else {
+                    logger << "a." << std::flush;
                 }
                 break;
             case status::always_poll:
@@ -155,7 +159,7 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                     if(event.read) {
                         ustring out = receive_bytes_from_network();
                         
-                        auto st_msg = primary_receiver->handle(out);
+                        auto st_msg = primary_receiver->handle(std::move(out));
                         activity = st_msg.m_status;
                         write_buffer.append(st_msg.m_response);
                     }

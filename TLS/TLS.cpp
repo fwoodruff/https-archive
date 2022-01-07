@@ -76,6 +76,7 @@ status_message TLS::handle(ustring input) noexcept {
             handle_record(std::move(*record), output);
         }
     } catch(const ssl_error& e) {
+        logger << "q." << std::flush;
         logger << e.what() << std::endl;
         tls_record r;
         r.type = 0x15;
@@ -83,13 +84,21 @@ status_message TLS::handle(ustring input) noexcept {
         r.minor_version = 0x03;
         r.contents = { static_cast<uint8_t>(e.m_l), static_cast<uint8_t>(e.m_d) };
         if(handshake_done) {
+            logger << "q,." << std::flush;
             file_assert(is_client_hello_done, "handshake done without hello");
             r = cipher_context->encrypt(r);
+            logger << "r." << std::flush;
         }
-        return {r.serialise(), status::closing };
+        logger << "s." << std::flush;
+        auto str = r.serialise();
+        logger << "t." << std::flush;
+        return {str, status::closing };
     } catch(const std::out_of_range& e) {
+        logger << "ob " << std::flush;
         logger << e.what() << std::endl;
         return {{}, status::closed };
+    } catch(...) {
+        file_assert(false, "bad exception");
     }
     return output;
 }
@@ -512,6 +521,7 @@ void TLS::server_handshake_finished(status_message& output) {
 void TLS::client_application_data(const ustring& application_data, status_message& output) {
     logger << "TLS::client_application_data()" << std::endl;
     const auto app_out = next->handle(application_data);
+    logger << "g,," << std::flush;
     output.m_status = app_out.m_status;
     int record_size = 1;
     for(size_t i = 0; i < app_out.m_response.size(); i += record_size) {
