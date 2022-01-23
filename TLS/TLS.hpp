@@ -29,7 +29,9 @@ class TLS final : public receiver {
     
     bool handshake_done = false;
     bool is_client_hello_done = false;
-    
+    bool is_client_key_exchange_done = false;
+    bool is_change_cipher_spec_done = false;
+    bool is_client_handshake_finished_done = false;
     
     std::array<uint8_t,32> client_public_key {};
     std::array<uint8_t,32> server_private_key_ephem {};

@@ -175,7 +175,16 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
     logger << "TLS::handle_client_hello()" <<std::endl;
     // handshake header
     file_assert(hello.at(0) == 1, "handle_client_hello");
-
+    
+    
+    if (is_client_hello_done == true or
+        is_client_key_exchange_done == true or
+        is_change_cipher_spec_done == true or
+        is_client_handshake_finished_done == true) {
+        
+        throw ssl_error("bad handshake message ordering", AlertLevel::fatal, AlertDescription::unexpected_message);
+    }
+    
     
     size_t len = safe_asval(hello,1,3);
     if(len+4 != hello.size()) {
@@ -309,7 +318,7 @@ tls_record TLS::server_key_exchange(){
     record.m_contents.reserve(116);
     record.m_contents = { static_cast<uint8_t>(HandshakeType::server_key_exchange), 0x00, 0x00, 0x00 };
     std::array<uint8_t,3> curveInfo({static_cast<uint8_t>(ECCurveType::named_curve), 0x00, 0x00});
-    write_int((size_t)NamedCurve::x25519, &curveInfo[1], 2);
+    write_int(static_cast<size_t>(NamedCurve::x25519), &curveInfo[1], 2);
     
     ustring signed_empheral_key;
     signed_empheral_key.append(curveInfo.cbegin(), curveInfo.cend());
@@ -375,6 +384,15 @@ void TLS::handle_client_key_exchange(const ustring& key_exchange) {
     logger << "TLS::handle_client_key_exchange()" << std::endl;
     file_assert(key_exchange.at(0) == static_cast<uint8_t>(HandshakeType::client_key_exchange), "client key bad");
     
+    if (is_client_hello_done == false or
+        is_client_key_exchange_done == true or
+        is_change_cipher_spec_done == true or
+        is_client_handshake_finished_done == true) {
+        
+        throw ssl_error("bad handshake message ordering", AlertLevel::fatal, AlertDescription::unexpected_message);
+    }
+    
+    
     const size_t len = safe_asval(key_exchange,1,3);
     const size_t keylen = safe_asval(key_exchange,4,1);
     if(len+4 != key_exchange.size() or len != keylen + 1) {
@@ -398,20 +416,43 @@ void TLS::handle_client_key_exchange(const ustring& key_exchange) {
     
     cipher_context->set_key_material(key_material);
     handshake_hasher->update(key_exchange);
+    
+    is_client_key_exchange_done = true;
 }
 
 void TLS::client_change_cipher_spec(const ustring& change_message) {
     logger << "TLS::client_change_cipher_spec()" << std::endl;
+    
+    if (is_client_hello_done == false or
+        is_client_key_exchange_done == false or
+        is_change_cipher_spec_done == true or
+        is_client_handshake_finished_done == true) {
+        
+        throw ssl_error("bad handshake message ordering", AlertLevel::fatal, AlertDescription::unexpected_message);
+    }
+    
     if(change_message.size() != 1 and change_message.at(0) != static_cast<uint8_t>(ChangeCipherSpec::change_cipher_spec)) {
         throw ssl_error("bad cipher spec", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
     handshake_done = true;
+    is_change_cipher_spec_done = true;
 }
 
 
 void TLS::client_handshake_finished(const ustring& finish, status_message& output) {
     logger << "TLS::client_handshake_finished()" << std::endl;
     file_assert(finish.at(0) == static_cast<uint8_t>(HandshakeType::finished), "bad record type");
+    
+    if (is_client_hello_done == false or
+        is_client_key_exchange_done == false or
+        is_change_cipher_spec_done == false or
+        is_client_handshake_finished_done == true) {
+        
+        throw ssl_error("bad handshake message ordering", AlertLevel::fatal, AlertDescription::unexpected_message);
+    }
+    
+    
+    
     const size_t len = safe_asval(finish,1,3);
     if(len != 12) {
         throw ssl_error("bad verification", AlertLevel::fatal, AlertDescription::handshake_failure);
@@ -451,6 +492,8 @@ void TLS::client_handshake_finished(const ustring& finish, status_message& outpu
     handshake_hasher->update(finish);
     server_change_cipher_spec(output);
     server_handshake_finished(output);
+    
+    is_client_handshake_finished_done = true;
 }
 
 void TLS::server_change_cipher_spec(status_message& output) {
