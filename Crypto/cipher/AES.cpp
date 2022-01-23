@@ -151,10 +151,13 @@ constexpr uint8_t GMul_explicit(uint8_t a, uint8_t b) {
 }
 
 
+
+
+
 /*
  Caches the Galois field multiplications and retrieves from the cache
  */
-constexpr auto GMULRES = []() constexpr {
+constexpr auto GMULRES = []() {
     std::array<std::array<uint8_t,256>,16> resa {{}};
     for(int i = 0; i < 16; i++) {
         for(int j = 0; j < 256; j++) {

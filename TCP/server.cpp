@@ -19,6 +19,9 @@
 #include <sys/socket.h>
 #include <netdb.h>
 #include <arpa/inet.h>
+#include <netinet/tcp.h>
+#include <netinet/in.h>
+
 
 #include <ctime>
 #include <cstdlib>
@@ -68,6 +71,7 @@ server_socket get_listener_socket(std::string service) {
     hints.ai_flags = AI_PASSIVE;
     
    
+    // The DF flag is set for the IP packet by most operating systems for the HTTPS 443 port.
     if(::getaddrinfo(nullptr, service.c_str(), &hints, &ai) != 0) {
         throw std::system_error(errno, std::generic_category());
     }
@@ -75,6 +79,7 @@ server_socket get_listener_socket(std::string service) {
 
     for(p = ai; p != nullptr; p = p->ai_next) {
         try {
+
             listener = server_socket(p->ai_family, p->ai_socktype, p->ai_protocol);
             
             int yes;
@@ -124,6 +129,7 @@ server::server(std::string service, std::function<std::unique_ptr<receiver>()> r
  
  The goal is to keep overheads as low as possible when handling a large number of low-load connections.
  We want to keep active connections open to minimise the number of expensive handshakes we need to negotiate.
+ This design is overkill until I implement some kind of parallelism (proxy servers or GPU handshake/cipher acceleration)
  
  To do:
  Implement resumption of old TLS sessions on new connections.
@@ -136,6 +142,8 @@ server::server(std::string service, std::function<std::unique_ptr<receiver>()> r
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
+
+
 void server::serve_some() {
     logger << "server::serve_some()" << std::endl;
     logger << "number of connections: " << connections.size() << std::endl;
@@ -143,9 +151,11 @@ void server::serve_some() {
     bool can_accept = connections.size() < static_cast<size_t>(MAX_SOCKETS - 11);
     m_poller.mod_fd(m_sock, can_accept, false);
 
+    
+    
     const auto events = m_poller.get_events(!connections.empty());
     
-    sanity(events);
+    //sanity(events);
     
     for (const auto& event : events) {
         std::visit(overloaded {
@@ -186,9 +196,16 @@ void server::accept_connection(tp loop_time) {
     auto skt = m_sock.accept((sockaddr *) &cli_addr, &sin_len);
     skt.fcntl(F_SETFL, O_NONBLOCK);
     
-    auto [full_name, ip ] = skt.cli_socketinfo();
-    logger << full_name << " ... " << ip << std::endl;
-
+    // This is nice but when the DNS server goes down this waits for a timeout.
+    /*
+    try {
+        auto [full_name, ip ] = skt.cli_socketinfo();
+        logger << full_name << " ... " << ip << std::endl;
+    } catch(const std::runtime_error& e) {
+        logger << "Bad DNS" << std::endl;
+    }
+    */
+    
     connections.emplace_front(loop_time, m_factory(), &m_poller, std::move(skt));
     
     m_poller.add_fd(connections.front().m_socket, connections.begin(), true, false);

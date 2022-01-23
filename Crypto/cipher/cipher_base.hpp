@@ -9,6 +9,7 @@
 #define cipher_base_hpp
 
 #include "global.hpp"
+#include "TLS_enums.hpp"
 
 #include <cstdio>
 

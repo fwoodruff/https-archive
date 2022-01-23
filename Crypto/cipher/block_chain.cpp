@@ -80,57 +80,57 @@ tls_record AES_CBC_SHA::encrypt(tls_record record) {
     std::array<uint8_t,13> sequence {};
     write_int(seqno_server, &sequence[0], 8);
     seqno_server++;
-    sequence[8] = record.type;
-    sequence[9] = record.major_version;
-    sequence[10] = record.minor_version;
-    write_int(record.contents.size(),&sequence[11], 2);
+    sequence[8] = record.get_type();
+    sequence[9] = record.get_major_version();
+    sequence[10] = record.get_minor_version();
+    write_int(record.m_contents.size(),&sequence[11], 2);
     ctx.update(sequence);
-    ctx.update(record.contents);
+    ctx.update(record.m_contents);
     auto machash = std::move(ctx).hash();
     
-    record.contents.append(machash);
+    record.m_contents.append(machash);
     
     std::array<uint8_t, 16> record_IV {};
     randomgen.randgen(&record_IV[0], record_IV.size());
 
-    record.contents = pad_message(std::move(record.contents));
+    record.m_contents = pad_message(std::move(record.m_contents));
     
     ustring out;
     out.append(record_IV.cbegin(),record_IV.cend());
     auto in_block = record_IV;
-    for(size_t i = 0; i < record.contents.size(); i += 16) {
-        std::transform(in_block.cbegin(), in_block.cend(), &record.contents[i], in_block.begin(), std::bit_xor<uint8_t>());
+    for(size_t i = 0; i < record.m_contents.size(); i += 16) {
+        std::transform(in_block.cbegin(), in_block.cend(), &record.m_contents[i], in_block.begin(), std::bit_xor<uint8_t>());
         auto out_block = aes_encrypt(in_block, server_write_round_keys);
         out.append(out_block.cbegin(),out_block.cend());
         in_block = out_block;
     }
-    record.contents = std::move(out);
+    record.m_contents = std::move(out);
     return record;
 }
 
 tls_record AES_CBC_SHA::decrypt(tls_record record) {
     
     
-    if(record.contents.size() % 16 != 0) {
+    if(record.m_contents.size() % 16 != 0) {
         throw ssl_error("bad encrypted record length", AlertLevel::fatal, AlertDescription::decrypt_error);
     }
-    if(record.contents.size() < 32) {
-        record.contents = {};
+    if(record.m_contents.size() < 32) {
+        record.m_contents = {};
         return record;
     }
     ustring plaintext;
     std::array<uint8_t, 16> record_IV {};
     constexpr auto blocksize = record_IV.size();
     
-    file_assert(record.contents.size() >= 16, "bad record size");
-    std::copy(&*record.contents.begin(),&record.contents[blocksize], record_IV.begin() );
+    file_assert(record.m_contents.size() >= 16, "bad record size");
+    std::copy(&*record.m_contents.begin(),&record.m_contents[blocksize], record_IV.begin() );
 
     
     auto xor_block = record_IV;
     
-    for(size_t i = blocksize; i < record.contents.size(); i += blocksize) {
+    for(size_t i = blocksize; i < record.m_contents.size(); i += blocksize) {
         std::array<uint8_t,blocksize> in_block {};
-        std::copy(&record.contents[i], &record.contents[i+blocksize], in_block.begin());
+        std::copy(&record.m_contents[i], &record.m_contents[i+blocksize], in_block.begin());
 
         auto plainxor = aes_decrypt(in_block, client_write_round_keys);
 
@@ -159,9 +159,9 @@ tls_record AES_CBC_SHA::decrypt(tls_record record) {
     auto ctx = hmac(std::make_unique<sha1>(), client_MAC_key);
     std::array<uint8_t,13> mac_hash_header {};
     write_int(seqno_client, &mac_hash_header[0], 8);
-    mac_hash_header[8] = record.type;
-    mac_hash_header[9] = record.major_version;
-    mac_hash_header[10] = record.minor_version;
+    mac_hash_header[8] = record.get_type();
+    mac_hash_header[9] = record.get_major_version();
+    mac_hash_header[10] = record.get_minor_version();
 
     seqno_client++;
     write_int(plaintext.size(),&mac_hash_header[11], 2);
@@ -173,7 +173,7 @@ tls_record AES_CBC_SHA::decrypt(tls_record record) {
     if(!std::equal(mac_calc.cbegin(), mac_calc.cend(), machash.cbegin())) {
         throw ssl_error("bad client MAC", AlertLevel::fatal, AlertDescription::bad_record_mac);
     }
-    record.contents = std::move(plaintext);
+    record.m_contents = std::move(plaintext);
     return record;
 }
 

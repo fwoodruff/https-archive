@@ -131,6 +131,35 @@ public:
     
 };
 
+struct tls_record {
+
+private:
+    uint8_t m_type;
+    uint8_t m_major_version;
+    uint8_t m_minor_version;
+public:
+    ustring m_contents;
+    
+    inline uint8_t get_type() const { return m_type; }
+    inline uint8_t get_major_version() const { return m_major_version; }
+    inline uint8_t get_minor_version() const { return m_minor_version; }
+    
+    inline tls_record(ContentType type, uint8_t major_version = 3, uint8_t minor_version = 3) :
+        m_type(static_cast<uint8_t>(type)),
+        m_major_version(major_version),
+        m_minor_version(minor_version),
+        m_contents()
+    {}
+    
+    inline ustring serialise() const {
+        ustring out;
+        out.append({m_type, m_major_version, m_minor_version, 0,0});
+        write_int(m_contents.size(), &out[3], 2);
+        out.append(m_contents);
+        return out;
+    }
+};
+
 
 
 } // namespace fbw

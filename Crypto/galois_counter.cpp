@@ -165,40 +165,40 @@ static void ghash(const uint8_t *h, const uint8_t *x, size_t xlen, uint8_t *y) {
 
 static void aes_gctr(roundkey aesk, aes_block cb, const uint8_t *x, size_t xlen, uint8_t *y)
 {
-    size_t i, n, last;
+    size_t last;
     
     
-    const uint8_t *xpos = x;
-    uint8_t *ypos = y;
+    //const uint8_t *xpos = x;
+    //uint8_t *ypos = y;
 
     if (xlen == 0)
         return;
 
-    n = xlen / 16;
+    
 
+    auto roundedx = (xlen &~15u);
+    
+    
 
-
-    for (i = 0; i < n; i++) {
+    for (int i = 0; i < roundedx; i += AES_BLOCK_SIZE) {
         
         
         auto yy = aes_encrypt(cb, aesk);
         
 
-        std::transform(yy.begin(), yy.end(), xpos, yy.begin(), std::bit_xor<uint8_t>());
-        memcpy(ypos, &yy[0], AES_BLOCK_SIZE);
+        std::transform(yy.begin(), yy.end(), &x[i], yy.begin(), std::bit_xor<uint8_t>());
+        memcpy(&y[i], &yy[0], AES_BLOCK_SIZE);
         
-        //xor_block(ypos, xpos);
-        xpos += AES_BLOCK_SIZE;
-        ypos += AES_BLOCK_SIZE;
+
         inc32(cb);
     }
 
-    last = x + xlen - xpos;
+    last = xlen - roundedx;
     if (last) {
 
         auto tmp = aes_encrypt(cb, aesk);
-        for (i = 0; i < last; i++)
-            *ypos++ = *xpos++ ^ tmp[i];
+        for (size_t i = 0; i < last; i++)
+            y[i+roundedx] = x[i+roundedx] ^ tmp[i];
     }
 }
 
@@ -344,37 +344,76 @@ void AES_128_GCM_SHA256::set_key_material(ustring material) {
 
 
 tls_record AES_128_GCM_SHA256::encrypt(tls_record record) {
+    logger << "AES_128_GCM_SHA256::encrypt" << std::flush;
+    for(auto c : record.m_contents) {
+        logger << char(c);
+    }
+    logger << std::endl;
+    
     ustring sequence_no;
     sequence_no.resize(8);
+    logger << "sequence_no" << std::flush;
     
     write_int(seqno_server, sequence_no.data(), 8);
+    logger << "write_int" << std::flush;
     seqno_server++;
+    logger << "seqno_server" << std::flush;
     
-    uint16_t msglen = htons(record.contents.size());
+    uint16_t msglen = htons(record.m_contents.size());
+    
+    logger << "msglensiz" << std::flush;
     
     ustring additional_data = sequence_no;
-    additional_data.append({record.type, record.major_version, record.minor_version});
+    logger << "additional_data" << std::flush;
+    
+    additional_data.append({record.get_type(), record.get_major_version(), record.get_minor_version()});
+    logger << "additional_data2" << std::flush;
+    
+    
     additional_data.resize(13);
     std::memcpy(&additional_data[11], &msglen, 2);
+    logger << "memcpy" << std::flush;
     
     ustring iv = server_implicit_write_IV + sequence_no;
+    logger << "concat" << std::flush;
 
-    auto [ciphertext, auth_tag] = aes_gcm_ae(server_write_round_keys, iv, record.contents, additional_data);
+    logger << "server_write_round_keysv" << std::flush;
+    for(auto c : server_write_round_keys) {
+        logger << c[0] << c[1] << c[2] << c[3] << " ";
+    }
+    
+    logger << "Iv" << std::flush;
+    for(auto c : iv) {
+        logger << c;
+    }
+    logger << std::endl;
+    
+    logger << "record.m_contents" << std::flush;
+    for(auto c : record.m_contents) {
+        logger << c;
+    }
+    logger << std::endl;
+    
+    for(auto c : additional_data) {
+        logger << c;
+    }
+    logger << std::endl;
     
     
-    
-    
+    auto [ciphertext, auth_tag] = aes_gcm_ae(server_write_round_keys, iv, record.m_contents, additional_data);
+    logger << "aes_gcm_ae" << std::flush;
     
     file_assert(auth_tag.size() == 16, "no auth tag");
     file_assert(sequence_no.size() == 8, "no seq no");
     
-    record.contents = sequence_no + ciphertext + auth_tag;
+    record.m_contents = sequence_no + ciphertext + auth_tag;
+    logger << "record.m_contents" << std::flush;
     return record;
 }
 
 tls_record AES_128_GCM_SHA256::decrypt(tls_record record) {
     logger << "GCM decrypt" << std::endl;
-    if(record.contents.size() < 24) {
+    if(record.m_contents.size() < 24) {
         throw ssl_error("short record", AlertLevel::fatal, AlertDescription::decrypt_error);
     }
     
@@ -384,26 +423,26 @@ tls_record AES_128_GCM_SHA256::decrypt(tls_record record) {
     seqno_client++;
 
     ustring explicit_IV;
-    explicit_IV.append({record.contents.begin(), record.contents.begin()+8});
+    explicit_IV.append({record.m_contents.begin(), record.m_contents.begin()+8});
     ustring ciphertext;
-    ciphertext.append({record.contents.begin()+8, record.contents.end()-16});
+    ciphertext.append({record.m_contents.begin()+8, record.m_contents.end()-16});
     ustring auth_tag;
-    auth_tag.append({record.contents.end()-16, record.contents.end()});
+    auth_tag.append({record.m_contents.end()-16, record.m_contents.end()});
     
     file_assert(auth_tag.size() == 16, "bad auth tag");
     file_assert(explicit_IV.size() == 8,  "bad explicit_IV");
     
     ustring additional_data;
     additional_data.append(sequence);
-    additional_data.append({record.type, record.major_version, record.minor_version});
+    additional_data.append({record.get_type(), record.get_major_version(), record.get_minor_version()});
     additional_data.resize(13);
-    uint16_t msglen = htons(record.contents.size() - auth_tag.size() - explicit_IV.size());
+    uint16_t msglen = htons(record.m_contents.size() - auth_tag.size() - explicit_IV.size());
     std::memcpy(&additional_data[11], &msglen, 2);
 
     auto iv = client_implicit_write_IV + explicit_IV;
     
     ustring plain = aes_gcm_ad(client_write_round_keys, iv, ciphertext, additional_data, auth_tag);
-    record.contents = plain;
+    record.m_contents = plain;
      
     return record;
 }

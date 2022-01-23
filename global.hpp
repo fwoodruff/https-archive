@@ -48,8 +48,8 @@ using ustring = std::basic_string<uint8_t>;
 
 inline void write_int(uint64_t x, uint8_t* const s, short n) noexcept {
     //logger << "write_int()" << std::endl;
-    assert(n >= sizeof(uint64_t) or x < (1ull << (n*8)));
-    assert(n <= sizeof(uint64_t)); // avoids ub
+    assert(static_cast<size_t>(n) >= sizeof(uint64_t) or x < (1ull << (n*8)));
+    assert(static_cast<size_t>(n) <= sizeof(uint64_t)); // avoids ub
     for(short i = n-1; i >= 0; i--) {
         s[i] = static_cast<uint8_t>(x) & 0xffU;
         x>>=8;
@@ -58,19 +58,7 @@ inline void write_int(uint64_t x, uint8_t* const s, short n) noexcept {
 
 
 
-struct tls_record {
-    ustring contents;
-    uint8_t type;
-    uint8_t major_version;
-    uint8_t minor_version;
-    inline ustring serialise() const {
-        ustring out;
-        out.append({type, major_version, minor_version, 0,0});
-        write_int(contents.size(), &out[3], 2);
-        out.append(contents);
-        return out;
-    }
-};
+
 
 
 

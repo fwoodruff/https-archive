@@ -21,27 +21,27 @@ namespace fbw {
 
 class TLS final : public receiver {
     
-    ustring m_input;
-    std::array<uint8_t,32> m_client_random;
-    std::array<uint8_t,32> m_server_random;
+    ustring m_input {};
+    std::array<uint8_t,32> m_client_random {};
+    std::array<uint8_t,32> m_server_random {};
     // session ID
-    unsigned short cipher;
+    unsigned short cipher {};
     
     bool handshake_done = false;
     bool is_client_hello_done = false;
     
     
-    std::array<uint8_t,32> client_public_key;
-    std::array<uint8_t,32> server_private_key_ephem;
+    std::array<uint8_t,32> client_public_key {};
+    std::array<uint8_t,32> server_private_key_ephem {};
     
-    std::unique_ptr<hash_base> handshake_hasher;
+    std::unique_ptr<hash_base> handshake_hasher = nullptr;;
     
-    std::array<uint8_t,48> master_secret;
+    std::array<uint8_t,48> master_secret {};
 
     
-    std::unique_ptr<cipher_base> cipher_context;
+    std::unique_ptr<cipher_base> cipher_context = nullptr;
     
-    std::unique_ptr<const hash_base> hasher_factory;
+    std::unique_ptr<const hash_base> hasher_factory = nullptr;
     
     
     void handle_record(tls_record record, status_message& output);

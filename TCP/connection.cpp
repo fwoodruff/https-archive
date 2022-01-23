@@ -82,6 +82,16 @@ void connection::send_bytes_over_network() {
             return;
     }
     logger << "a. " << std::flush;
+    
+    
+    
+    // MSG_NOSIGNAL is not necessary because I have called setsockopt(SO_NOSIGPIPE) in server.cpp
+    // I have included this anyway for emphasis.
+    // clients disconnecting should not crash the program.
+    
+    // Interplay between setsockopt(TCP_NO_DELAY) and send(MSG_MORE) flags
+    // would be plausible optimisations for speeding up handshakes.
+    // This would require distinguising between handshake packets and application packets
     auto bytes = m_socket.send(write_buffer.data(), write_buffer.size(), MSG_NOSIGNAL);
     logger << "b. " << bytes << ": " << std::flush;
     file_assert(bytes <= write_buffer.size(), "bytes <= write_buffer.size()");
@@ -145,13 +155,11 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                     logger << "done primary_receiver->handle(out)" << std::endl;
                     activity = st_msg.m_status;
                     write_buffer.append(st_msg.m_response);
-                    logger << "w." << std::flush;
                 }
                 if(event.write) {
-                    logger << "1: ";
                     send_bytes_over_network();
                 } else {
-                    logger << "a." << std::flush;
+                    //logger << "a." << std::flush;
                 }
                 break;
             case status::always_poll:
@@ -165,7 +173,7 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                     }
                 }
                 if(event.write) {
-                    logger << "2: ";
+                    
                     send_bytes_over_network();
                 }
                 break;
@@ -173,8 +181,8 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                 file_assert(!event.read, "closing socket polled for read");
                 
                 if(event.write) {
-                    logger << "3: ";
-                    send_bytes_over_network(); // this call broke
+                    
+                    send_bytes_over_network();
                     
                 }
                 break;

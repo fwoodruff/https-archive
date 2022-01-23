@@ -168,12 +168,14 @@ std::pair<std::string,std::string> client_socket::cli_socketinfo() {
     char ipstr[INET6_ADDRSTRLEN];
     int port;
     
-    char host[1024];
-    char service[32];
+    char host[NI_MAXHOST];
+    char service[NI_MAXSERV];
     
     sin_len = sizeof cli_addr;
 
-    getpeername(m_fd, (struct sockaddr*)&cli_addr, &sin_len);
+    if(getpeername(m_fd, (struct sockaddr*)&cli_addr, &sin_len) != 0) {
+        throw std::system_error(errno, std::generic_category());
+    }
 
     int code = ::getnameinfo((const struct sockaddr *)&cli_addr,
                              sin_len, host, sizeof(host), service, sizeof service, 0);

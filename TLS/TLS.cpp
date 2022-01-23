@@ -76,17 +76,16 @@ status_message TLS::handle(ustring input) noexcept {
             handle_record(std::move(*record), output);
         }
     } catch(const ssl_error& e) {
-        logger << "q." << std::flush;
+        
         logger << e.what() << std::endl;
-        tls_record r;
-        r.type = 0x15;
-        r.major_version = 0x03;
-        r.minor_version = 0x03;
-        r.contents = { static_cast<uint8_t>(e.m_l), static_cast<uint8_t>(e.m_d) };
+        auto r = tls_record(ContentType::Alert);
+
+        r.m_contents = { static_cast<uint8_t>(e.m_l), static_cast<uint8_t>(e.m_d) };
         if(handshake_done) {
             logger << "q,." << std::flush;
+            file_assert(cipher_context != nullptr, "null cipher");
             file_assert(is_client_hello_done, "handshake done without hello");
-            r = cipher_context->encrypt(r);
+            r = cipher_context->encrypt(r); // this is breaking
             logger << "r." << std::flush;
         }
         logger << "s." << std::flush;
@@ -105,10 +104,10 @@ status_message TLS::handle(ustring input) noexcept {
 
 void TLS::handle_record(tls_record record, status_message& output) {
     logger << "TLS::handle_record()" <<std::endl;
-    if (record.major_version != 3) {
+    if (record.get_major_version() != 3) {
         throw ssl_error("unsupported version", AlertLevel::fatal, AlertDescription::protocol_version);
     }
-    if (record.contents.size() > 16384) {
+    if (record.m_contents.size() > 16384) {
         throw ssl_error("oversized record", AlertLevel::fatal, AlertDescription::record_overflow);
     }
     
@@ -128,21 +127,21 @@ void TLS::handle_record(tls_record record, status_message& output) {
     logger << "\n++++++++++++++++++++++" << std::endl;
     */
     
-    switch(record.type) {
+    switch(record.get_type()) {
         case static_cast<uint8_t>(ContentType::ChangeCipherSpec):
-            client_change_cipher_spec(std::move(record.contents));
+            client_change_cipher_spec(std::move(record.m_contents));
             break;
         case static_cast<uint8_t>(ContentType::Alert):
-            client_alert(std::move(record.contents), output);
+            client_alert(std::move(record.m_contents), output);
             break;
         case static_cast<uint8_t>(ContentType::Handshake):
-            client_handshake(std::move(record.contents), output);
+            client_handshake(std::move(record.m_contents), output);
             break;
         case static_cast<uint8_t>(ContentType::Application):
-            client_application_data(std::move(record.contents), output);
+            client_application_data(std::move(record.m_contents), output);
             break;
         case static_cast<uint8_t>(ContentType::Heartbeat):
-            client_heartbeat(std::move(record.contents), output);
+            client_heartbeat(std::move(record.m_contents), output);
             break;
         default:
             throw ssl_error("bad record type", AlertLevel::fatal, AlertDescription::illegal_parameter);
@@ -240,26 +239,24 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
 
 tls_record TLS::server_hello() {
     logger << "TLS::server_hello()" << std::endl;
-    tls_record hello_record;
-    hello_record.type = static_cast<uint8_t>(ContentType::Handshake);
-    hello_record.major_version = 3;
-    hello_record.minor_version = 3;
-    hello_record.contents.reserve(49);
-    hello_record.contents = {static_cast<uint8_t>(HandshakeType::server_hello), 0x00, 0x00, 0x00, 0x03, 0x03};
+    auto hello_record = tls_record(ContentType::Handshake);
+    
+    hello_record.m_contents.reserve(49);
+    hello_record.m_contents = {static_cast<uint8_t>(HandshakeType::server_hello), 0x00, 0x00, 0x00, 0x03, 0x03};
     
     randomgen.randgen(&m_server_random[0], 32);
-    hello_record.contents.append(m_server_random.cbegin(), m_server_random.cend());
-    hello_record.contents.append({0}); // session ID
+    hello_record.m_contents.append(m_server_random.cbegin(), m_server_random.cend());
+    hello_record.m_contents.append({0}); // session ID
     ustring ciph;
     ciph.resize(2);
     write_int(cipher, &ciph[0], 2);
-    hello_record.contents.append(ciph);
-    hello_record.contents.append({0}); // no compression
-    hello_record.contents.append({0x00, 0x05, 0xff, 0x01, 0x00, 0x01, 0x00}); // extensions
-    write_int(hello_record.contents.size()-4, &hello_record.contents[1], 3);
+    hello_record.m_contents.append(ciph);
+    hello_record.m_contents.append({0}); // no compression
+    hello_record.m_contents.append({0x00, 0x05, 0xff, 0x01, 0x00, 0x01, 0x00}); // extensions
+    write_int(hello_record.m_contents.size()-4, &hello_record.m_contents[1], 3);
 
     if(is_client_hello_done) {
-        handshake_hasher->update(hello_record.contents);
+        handshake_hasher->update(hello_record.m_contents);
     } else {
         throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
     }
@@ -269,11 +266,8 @@ tls_record TLS::server_hello() {
 
 tls_record TLS::server_certificate(){
     logger << "TLS::server_certificate()" << std::endl;
-    tls_record certificate_record;
-    certificate_record.type = static_cast<uint8_t>(ContentType::Handshake);
-    certificate_record.major_version = 3;
-    certificate_record.minor_version = 3;
-    certificate_record.contents = {static_cast<uint8_t>(HandshakeType::certificate), 0,0,0, 0,0,0};
+    tls_record certificate_record(ContentType::Handshake);
+    certificate_record.m_contents = {static_cast<uint8_t>(HandshakeType::certificate), 0,0,0, 0,0,0};
     
     const auto certs = der_cert_from_file(certificate_file);
     
@@ -282,19 +276,19 @@ tls_record TLS::server_certificate(){
         ustring cert_header;
         cert_header.append({0,0,0});
         write_int(cert.size(), cert_header.data(), 3);
-        certificate_record.contents.append(cert_header);
-        certificate_record.contents.append(cert);
+        certificate_record.m_contents.append(cert_header);
+        certificate_record.m_contents.append(cert);
     }
 
     
     
     
-    write_int(certificate_record.contents.size()-4, &certificate_record.contents[1], 3);
-    write_int(certificate_record.contents.size()-7, &certificate_record.contents[4], 3);
+    write_int(certificate_record.m_contents.size()-4, &certificate_record.m_contents[1], 3);
+    write_int(certificate_record.m_contents.size()-7, &certificate_record.m_contents[4], 3);
 
     
     if(is_client_hello_done) {
-        handshake_hasher->update(certificate_record.contents);
+        handshake_hasher->update(certificate_record.m_contents);
     } else {
         throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
     }
@@ -310,12 +304,10 @@ tls_record TLS::server_key_exchange(){
     std::array<uint8_t,32> pubkey_ephem = curve25519::base_multiply(privrev); // endianness could be wrong
     std::reverse(pubkey_ephem.begin(), pubkey_ephem.end());
 
-    tls_record record;
-    record.type = static_cast<uint8_t>(ContentType::Handshake);
-    record.major_version = 3;
-    record.minor_version = 3;
-    record.contents.reserve(116);
-    record.contents = { static_cast<uint8_t>(HandshakeType::server_key_exchange), 0x00, 0x00, 0x00 };
+    tls_record record(ContentType::Handshake);
+
+    record.m_contents.reserve(116);
+    record.m_contents = { static_cast<uint8_t>(HandshakeType::server_key_exchange), 0x00, 0x00, 0x00 };
     std::array<uint8_t,3> curveInfo({static_cast<uint8_t>(ECCurveType::named_curve), 0x00, 0x00});
     write_int((size_t)NamedCurve::x25519, &curveInfo[1], 2);
     
@@ -352,33 +344,30 @@ tls_record TLS::server_key_exchange(){
         static_cast<uint8_t>(SignatureAlgorithm::ecdsa), 0x00, 0x00});
     write_int(signature.size(), &sig_header[2], 2);
     
-    record.contents.append(signed_empheral_key);
-    record.contents.append(sig_header);
-    record.contents.append(signature);
+    record.m_contents.append(signed_empheral_key);
+    record.m_contents.append(sig_header);
+    record.m_contents.append(signature);
 
-    write_int(record.contents.size()-4, &record.contents[1], 3);
+    write_int(record.m_contents.size()-4, &record.m_contents[1], 3);
     
     if(!is_client_hello_done) {
         throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
     }
     
-    handshake_hasher->update(record.contents);
+    handshake_hasher->update(record.m_contents);
     return record;
 }
 
 tls_record TLS::server_hello_done() {
     logger << "TLS::server_hello_done()" << std::endl;
-    tls_record record;
-    record.type = static_cast<uint8_t>(ContentType::Handshake);
-    record.major_version = 3;
-    record.minor_version = 3;
-    record.contents = { static_cast<uint8_t>(HandshakeType::server_hello_done), 0x00, 0x00, 0x00 };
+    tls_record record(ContentType::Handshake);
+    record.m_contents = { static_cast<uint8_t>(HandshakeType::server_hello_done), 0x00, 0x00, 0x00 };
     
     if(!is_client_hello_done) {
         throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
     }
     
-    handshake_hasher->update(record.contents);
+    handshake_hasher->update(record.m_contents);
     return record;
 }
 
@@ -473,12 +462,8 @@ void TLS::server_change_cipher_spec(status_message& output) {
 
 void TLS::server_handshake_finished(status_message& output) {
     logger << "TLS::server_handshake_finished()" << std::endl;
-    tls_record out;
-    out.type = static_cast<uint8_t>(ContentType::Handshake);
-    out.major_version = 3;
-    out.minor_version = 3;
-
-    out.contents = {static_cast<uint8_t>(HandshakeType::finished), 0x00, 0x00, 0x0c};
+    tls_record out(ContentType::Handshake);
+    out.m_contents = {static_cast<uint8_t>(HandshakeType::finished), 0x00, 0x00, 0x0c};
     
     std::string seedsi = "server finished";
     ustring seed;
@@ -508,7 +493,7 @@ void TLS::server_handshake_finished(status_message& output) {
         .hash();
     
     file_assert(p1.size() >= 12, "bad hash");
-    out.contents.append(&p1[0], &p1[12]);
+    out.m_contents.append(&p1[0], &p1[12]);
 
     if(handshake_done) {
         out = cipher_context->encrypt(std::move(out));
@@ -528,11 +513,8 @@ void TLS::client_application_data(const ustring& application_data, status_messag
         // break up the http byte stream randomly
         record_size = std::clamp(int(randomgen.randgen64() % (7*app_out.m_response.size()/4)), 256, 10000);
         
-        tls_record out;
-        out.type = static_cast<uint8_t>(ContentType::Application);
-        out.major_version = 3;
-        out.minor_version = 3;
-        out.contents.append(&app_out.m_response[i], &app_out.m_response[std::min(i+record_size, app_out.m_response.size())]);
+        tls_record out(ContentType::Application);
+        out.m_contents.append(&app_out.m_response[i], &app_out.m_response[std::min(i+record_size, app_out.m_response.size())]);
         if(handshake_done) {
             file_assert(is_client_hello_done, "handshake finished without client hello");
             out = cipher_context->encrypt(std::move(out));
@@ -545,11 +527,9 @@ void TLS::client_application_data(const ustring& application_data, status_messag
 
 void TLS::tls_notify_close(status_message& output) {
     logger << "TLS::tls_notify_close()" << std::endl;
-    tls_record close_record;
-    close_record.type = static_cast<uint8_t>(ContentType::Alert);
-    close_record.major_version = 3;
-    close_record.minor_version = 3;
-    close_record.contents = {1,0};
+    tls_record close_record( ContentType::Alert);
+
+    close_record.m_contents = {1,0};
     if(handshake_done) {
         file_assert(is_client_hello_done, "handshake finished without client hello");
         close_record = cipher_context->encrypt(std::move(close_record));
@@ -590,11 +570,9 @@ void TLS::client_heartbeat(const ustring& heartbeat_message, status_message& out
         throw ssl_error("bad heartbeat", AlertLevel::fatal, AlertDescription::access_denied);
     }
     
-    tls_record heartbeat_record;
-    heartbeat_record.type = static_cast<uint8_t>(ContentType::Heartbeat);
-    heartbeat_record.major_version = 3;
-    heartbeat_record.minor_version = 3;
-    heartbeat_record.contents = {2};
+    tls_record heartbeat_record( ContentType::Heartbeat);
+
+    heartbeat_record.m_contents = {2};
     
     if(handshake_done) {
         file_assert(is_client_hello_done, "handshake finished without client hello");
@@ -713,15 +691,13 @@ std::optional<tls_record> try_extract_record(ustring& input) {
     if (input.size() < 5) {
         return std::nullopt;
     }
-    tls_record out;
-    out.type = input[0];
-    out.major_version = input[1];
-    out.minor_version = input[2];
+    tls_record out(static_cast<ContentType>(input[0]) ,input[1], input[2] );
+
     size_t record_size = safe_asval(input,3,2);
     if(input.size() < record_size + 5) {
         return std::nullopt;
     }
-    out.contents = input.substr(5, record_size);
+    out.m_contents = input.substr(5, record_size);
     input = input.substr(5 + record_size);
     return out;
 }
@@ -760,11 +736,8 @@ void TLS::test_handshake() && {
     cipher_context->set_key_material(key_material);
     
     
-    tls_record ping;
-    ping.type = 0x16;
-    ping.major_version = 0x03;
-    ping.minor_version = 0x03;
-    ping.contents = {0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f,
+    tls_record ping(ContentType::Handshake);
+    ping.m_contents = {0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47, 0x48, 0x49, 0x4a, 0x4b, 0x4c, 0x4d, 0x4e, 0x4f,
         0x22, 0x7b, 0xc9, 0xba, 0x81, 0xef, 0x30, 0xf2, 0xa8, 0xa7, 0x8f, 0xf1, 0xdf, 0x50, 0x84, 0x4d, 0x58, 0x04,
         0xb7, 0xee, 0xb2, 0xe2, 0x14, 0xc3, 0x2b, 0x68, 0x92, 0xac, 0xa3, 0xdb, 0x7b, 0x78, 0x07, 0x7f, 0xdd, 0x90, 0x06,
         0x7c, 0x51, 0x6b, 0xac, 0xb3, 0xba, 0x90, 0xde, 0xdf, 0x72, 0x0f };
@@ -772,7 +745,7 @@ void TLS::test_handshake() && {
     auto output = cipher_context->decrypt(ping);
     const ustring answer_ping = {0x14, 0x00, 0x00, 0x0c, 0xcf, 0x91, 0x96, 0x26,
         0xf1, 0x36, 0x0c, 0x53, 0x6a, 0xaa, 0xd7, 0x3a };
-    if(!std::equal(output.contents.begin(), output.contents.end(), answer_ping.begin(), answer_ping.end())) {
+    if(!std::equal(output.m_contents.begin(), output.m_contents.end(), answer_ping.begin(), answer_ping.end())) {
         logger << "failed decryption";
         std::terminate();
     }
