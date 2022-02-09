@@ -59,7 +59,6 @@ std::optional<tls_record> try_extract_record(ustring& input);
 
 // handler
 status_message TLS::handle(ustring input) noexcept {
-    logger << "TLS::handle()" <<std::endl;
     m_input.append(input);
     
     file_assert(input.size() < 20000, "TLS handle input size too much");
@@ -76,25 +75,22 @@ status_message TLS::handle(ustring input) noexcept {
             handle_record(std::move(*record), output);
         }
     } catch(const ssl_error& e) {
-        
-        logger << e.what() << std::endl;
+
         auto r = tls_record(ContentType::Alert);
 
         r.m_contents = { static_cast<uint8_t>(e.m_l), static_cast<uint8_t>(e.m_d) };
-        if(handshake_done) {
-            logger << "q,." << std::flush;
+        if(is_change_cipher_spec_done) {
+            
             file_assert(cipher_context != nullptr, "null cipher");
             file_assert(is_client_hello_done, "handshake done without hello");
             r = cipher_context->encrypt(r); // this is breaking
-            logger << "r." << std::flush;
+            
         }
-        logger << "s." << std::flush;
+        
         auto str = r.serialise();
-        logger << "t." << std::flush;
+        
         return {str, status::closing };
     } catch(const std::out_of_range& e) {
-        logger << "ob " << std::flush;
-        logger << e.what() << std::endl;
         return {{}, status::closed };
     } catch(...) {
         file_assert(false, "bad exception");
@@ -103,7 +99,6 @@ status_message TLS::handle(ustring input) noexcept {
 }
 
 void TLS::handle_record(tls_record record, status_message& output) {
-    logger << "TLS::handle_record()" <<std::endl;
     if (record.get_major_version() != 3) {
         throw ssl_error("unsupported version", AlertLevel::fatal, AlertDescription::protocol_version);
     }
@@ -111,22 +106,10 @@ void TLS::handle_record(tls_record record, status_message& output) {
         throw ssl_error("oversized record", AlertLevel::fatal, AlertDescription::record_overflow);
     }
     
-    if (handshake_done) {
+    if (is_change_cipher_spec_done) {
         record = cipher_context->decrypt(std::move(record));
     }
-    /*
-    
-    logger <<   "++++++++++++++++++++++\n";
-    logger << "decrypted TLS:\n";
-    logger << unsigned(record.type) << " " << unsigned(record.major_version) << " "
-            << unsigned(record.minor_version) << " " << record.contents.size() << "\n";
-    
-    for(auto c : record.contents) {
-        logger << std::hex << int(unsigned(c)) << " ";
-    }
-    logger << "\n++++++++++++++++++++++" << std::endl;
-    */
-    
+
     switch(record.get_type()) {
         case static_cast<uint8_t>(ContentType::ChangeCipherSpec):
             client_change_cipher_spec(std::move(record.m_contents));
@@ -151,7 +134,6 @@ void TLS::handle_record(tls_record record, status_message& output) {
 }
  
 void TLS::client_handshake(ustring handshake_record, status_message& output) {
-    logger << "TLS::client_handshake()" <<std::endl;
     switch (handshake_record.at(0)) {
         case static_cast<uint8_t>(HandshakeType::hello_request):
             throw ssl_error("hello_request not supported", AlertLevel::fatal, AlertDescription::handshake_failure);
@@ -172,8 +154,6 @@ void TLS::client_handshake(ustring handshake_record, status_message& output) {
 
 
 void TLS::handle_client_hello(const ustring& hello, status_message& output) {
-    logger << "TLS::handle_client_hello()" <<std::endl;
-    // handshake header
     file_assert(hello.at(0) == 1, "handle_client_hello");
     
     
@@ -247,7 +227,6 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
 }
 
 tls_record TLS::server_hello() {
-    logger << "TLS::server_hello()" << std::endl;
     auto hello_record = tls_record(ContentType::Handshake);
     
     hello_record.m_contents.reserve(49);
@@ -274,7 +253,6 @@ tls_record TLS::server_hello() {
 }
 
 tls_record TLS::server_certificate(){
-    logger << "TLS::server_certificate()" << std::endl;
     tls_record certificate_record(ContentType::Handshake);
     certificate_record.m_contents = {static_cast<uint8_t>(HandshakeType::certificate), 0,0,0, 0,0,0};
     
@@ -306,7 +284,6 @@ tls_record TLS::server_certificate(){
 }
 
 tls_record TLS::server_key_exchange(){
-    logger << "TLS::server_key_exchange()" << std::endl;
     randomgen.randgen(server_private_key_ephem.begin(), server_private_key_ephem.size());
     std::array<uint8_t,32> privrev;
     std::reverse_copy(server_private_key_ephem.cbegin(), server_private_key_ephem.cend(), privrev.begin());
@@ -368,7 +345,6 @@ tls_record TLS::server_key_exchange(){
 }
 
 tls_record TLS::server_hello_done() {
-    logger << "TLS::server_hello_done()" << std::endl;
     tls_record record(ContentType::Handshake);
     record.m_contents = { static_cast<uint8_t>(HandshakeType::server_hello_done), 0x00, 0x00, 0x00 };
     
@@ -381,7 +357,6 @@ tls_record TLS::server_hello_done() {
 }
 
 void TLS::handle_client_key_exchange(const ustring& key_exchange) {
-    logger << "TLS::handle_client_key_exchange()" << std::endl;
     file_assert(key_exchange.at(0) == static_cast<uint8_t>(HandshakeType::client_key_exchange), "client key bad");
     
     if (is_client_hello_done == false or
@@ -421,8 +396,7 @@ void TLS::handle_client_key_exchange(const ustring& key_exchange) {
 }
 
 void TLS::client_change_cipher_spec(const ustring& change_message) {
-    logger << "TLS::client_change_cipher_spec()" << std::endl;
-    
+
     if (is_client_hello_done == false or
         is_client_key_exchange_done == false or
         is_change_cipher_spec_done == true or
@@ -434,13 +408,12 @@ void TLS::client_change_cipher_spec(const ustring& change_message) {
     if(change_message.size() != 1 and change_message.at(0) != static_cast<uint8_t>(ChangeCipherSpec::change_cipher_spec)) {
         throw ssl_error("bad cipher spec", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
-    handshake_done = true;
+
     is_change_cipher_spec_done = true;
 }
 
 
 void TLS::client_handshake_finished(const ustring& finish, status_message& output) {
-    logger << "TLS::client_handshake_finished()" << std::endl;
     file_assert(finish.at(0) == static_cast<uint8_t>(HandshakeType::finished), "bad record type");
     
     if (is_client_hello_done == false or
@@ -497,14 +470,12 @@ void TLS::client_handshake_finished(const ustring& finish, status_message& outpu
 }
 
 void TLS::server_change_cipher_spec(status_message& output) {
-    logger << "TLS::server_change_cipher_spec()" << std::endl;
     ustring record ({static_cast<uint8_t>(ContentType::ChangeCipherSpec),
         0x03, 0x03, 0x00, 0x01, static_cast<uint8_t>(ChangeCipherSpec::change_cipher_spec)});
     output.m_response.append(record);
 }
 
 void TLS::server_handshake_finished(status_message& output) {
-    logger << "TLS::server_handshake_finished()" << std::endl;
     tls_record out(ContentType::Handshake);
     out.m_contents = {static_cast<uint8_t>(HandshakeType::finished), 0x00, 0x00, 0x0c};
     
@@ -538,7 +509,8 @@ void TLS::server_handshake_finished(status_message& output) {
     file_assert(p1.size() >= 12, "bad hash");
     out.m_contents.append(&p1[0], &p1[12]);
 
-    if(handshake_done) {
+    
+    if(is_change_cipher_spec_done) {
         out = cipher_context->encrypt(std::move(out));
     } else {
         throw ssl_error("Unwilling to respond on unencrypted channel", AlertLevel::fatal, AlertDescription::insufficient_security);
@@ -547,9 +519,18 @@ void TLS::server_handshake_finished(status_message& output) {
 }
 
 void TLS::client_application_data(const ustring& application_data, status_message& output) {
-    logger << "TLS::client_application_data()" << std::endl;
+    
+    
+    if (is_client_hello_done == false or
+        is_client_key_exchange_done == false or
+        is_change_cipher_spec_done == false or
+        is_client_handshake_finished_done == false) {
+        
+        throw ssl_error("handshake already done", AlertLevel::fatal, AlertDescription::unexpected_message);
+    }
+    
     const auto app_out = next->handle(application_data);
-    logger << "g,," << std::flush;
+    
     output.m_status = app_out.m_status;
     int record_size = 1;
     for(size_t i = 0; i < app_out.m_response.size(); i += record_size) {
@@ -558,7 +539,7 @@ void TLS::client_application_data(const ustring& application_data, status_messag
         
         tls_record out(ContentType::Application);
         out.m_contents.append(&app_out.m_response[i], &app_out.m_response[std::min(i+record_size, app_out.m_response.size())]);
-        if(handshake_done) {
+        if(is_change_cipher_spec_done) {
             file_assert(is_client_hello_done, "handshake finished without client hello");
             out = cipher_context->encrypt(std::move(out));
         } else {
@@ -569,11 +550,10 @@ void TLS::client_application_data(const ustring& application_data, status_messag
 }
 
 void TLS::tls_notify_close(status_message& output) {
-    logger << "TLS::tls_notify_close()" << std::endl;
     tls_record close_record( ContentType::Alert);
 
     close_record.m_contents = {1,0};
-    if(handshake_done) {
+    if(is_change_cipher_spec_done) {
         file_assert(is_client_hello_done, "handshake finished without client hello");
         close_record = cipher_context->encrypt(std::move(close_record));
     }
@@ -584,7 +564,6 @@ void TLS::tls_notify_close(status_message& output) {
 
 
 bool TLS::client_alert(const ustring& alert_message, status_message& output) {
-    logger << "TLS::client_alert()" << std::endl;
     if(alert_message.size() != 2) {
         throw ssl_error("bad alert", AlertLevel::fatal, AlertDescription::unexpected_message);
     }
@@ -592,7 +571,6 @@ bool TLS::client_alert(const ustring& alert_message, status_message& output) {
         case static_cast<uint8_t>(AlertLevel::warning):
             switch(alert_message[1]) {
                 case static_cast<uint8_t>(AlertDescription::close_notify):
-
                     return true;
                     break;
                 default:
@@ -601,23 +579,21 @@ bool TLS::client_alert(const ustring& alert_message, status_message& output) {
             break;
         default:
             flag:
-            logger << int(alert_message[0]) << " " << int(alert_message[1]) << " ";
             throw ssl_error("unsupported alert", AlertLevel::fatal, AlertDescription::unexpected_message);
     }
 }
 
 
 void TLS::client_heartbeat(const ustring& heartbeat_message, status_message& output) {
-    logger << "TLS::client_heartbeat()" << std::endl;
     if(heartbeat_message.size() != 1 or heartbeat_message[0] != 0x01) {
-        throw ssl_error("bad heartbeat", AlertLevel::fatal, AlertDescription::access_denied);
+        throw ssl_error("heartbleed", AlertLevel::fatal, AlertDescription::access_denied);
     }
     
     tls_record heartbeat_record( ContentType::Heartbeat);
 
     heartbeat_record.m_contents = {2};
     
-    if(handshake_done) {
+    if(is_change_cipher_spec_done) {
         file_assert(is_client_hello_done, "handshake finished without client hello");
         heartbeat_record = cipher_context->encrypt(std::move(heartbeat_record));
     }
@@ -630,7 +606,6 @@ std::array<uint8_t,48> TLS::make_master_secret(const std::unique_ptr<const hash_
                                                 std::array<uint8_t,32> client_public,
                                                 std::array<uint8_t,32> server_random,
                                                 std::array<uint8_t,32> client_random) {
-    logger << "TLS::make_master_secret()" << std::endl;
     std::reverse(server_private.begin(), server_private.end());
     std::reverse(client_public.begin(), client_public.end());
     auto premaster_secret = fbw::curve25519::multiply(server_private, client_public);
@@ -672,7 +647,6 @@ std::array<uint8_t,48> TLS::make_master_secret(const std::unique_ptr<const hash_
 
 
 unsigned short TLS::cipher_choice(const ustring& s) {
-    logger << "TLS::cipher_choice()" << std::endl;
     for(size_t i = 0; i < s.size(); i += 2) {
         uint16_t x = safe_asval(s, i, 2);
         if (x == static_cast<uint16_t>(cipher_suites::TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA)) {

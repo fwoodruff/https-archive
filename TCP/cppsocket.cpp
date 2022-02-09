@@ -33,9 +33,7 @@ int cppsocket::get_native() const {
 }
 
 cppsocket::~cppsocket() {
-    logger << "cppsocket::~cppsocket()" << std::endl;
     if(m_fd != -1) {
-        logger << "closing socketfd: " << m_fd << std::endl;
         ::close(m_fd);
     }
 };
@@ -45,21 +43,17 @@ cppsocket::cppsocket() noexcept : m_fd(-1) { }
 
 cppsocket::cppsocket(int _fd) noexcept :
 m_fd(_fd) {
-    logger << "cppsocket::cppsocket(int)" << std::endl;
 }
 
 cppsocket::cppsocket(int domain, int type, int protocol) :
     cppsocket(::socket(domain, type, protocol)) {
-        logger << "cppsocket::cppsocket(int,int,int)" << std::endl;
 }
 
 cppsocket::cppsocket(cppsocket&& other) noexcept {
-    logger << "cppsocket::cppsocket(cppsocket&& other)" << std::endl;
     *this = std::move(other);
 }
 
 cppsocket& cppsocket::operator=(cppsocket&& other) noexcept {
-    logger << "cppsocket::operator=(cppsocket&& other)" << std::endl;
     m_fd = std::exchange(other.m_fd, -1);
     return *this;
 }
@@ -67,7 +61,6 @@ cppsocket& cppsocket::operator=(cppsocket&& other) noexcept {
 client_socket server_socket::accept(sockaddr * addr, socklen_t *addrlen) const {
     file_assert(m_fd != -1, "bad accept socket");
     const fd_t sock = ::accept(m_fd, addr, addrlen);
-    logger << "accepting socketfd: " << sock << std::endl;
     if(sock == -1) {
         static_assert(EAGAIN == EWOULDBLOCK, "bad errno constants");
         switch (errno) {

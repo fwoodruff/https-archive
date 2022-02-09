@@ -27,7 +27,7 @@ class TLS final : public receiver {
     // session ID
     unsigned short cipher {};
     
-    bool handshake_done = false;
+    
     bool is_client_hello_done = false;
     bool is_client_key_exchange_done = false;
     bool is_change_cipher_spec_done = false;

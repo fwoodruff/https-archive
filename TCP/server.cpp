@@ -61,7 +61,6 @@ in_port_t get_in_port(struct sockaddr *sa) {
  Opens a server socket
  */
 server_socket get_listener_socket(std::string service) {
-    logger << "get_listener_socket()" << std::endl;
     server_socket listener;
     struct addrinfo hints, *ai, *p;
 
@@ -104,7 +103,6 @@ server_socket get_listener_socket(std::string service) {
  The service is used to infer the correct port number
  */
 server::server(std::string service, std::function<std::unique_ptr<receiver>()> receiver_stack) : m_factory(receiver_stack) {
-    logger << "server::server()" << std::endl;
     m_sock = get_listener_socket(service.c_str());
     m_poller.add_fd(m_sock, static_fd::acceptor, true, false);
     m_service = service;
@@ -145,14 +143,10 @@ template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 
 void server::serve_some() {
-    logger << "server::serve_some()" << std::endl;
-    logger << "number of connections: " << connections.size() << std::endl;
     const auto loop_time = steady_clock::now();
     bool can_accept = connections.size() < static_cast<size_t>(MAX_SOCKETS - 11);
     m_poller.mod_fd(m_sock, can_accept, false);
 
-    
-    
     const auto events = m_poller.get_events(!connections.empty());
     
     //sanity(events);
@@ -189,7 +183,6 @@ void server::serve_some() {
  Add new connections to the connection list
  */
 void server::accept_connection(tp loop_time) {
-    logger << "server::accept_connection()" << std::endl;
     
     struct sockaddr_storage cli_addr;
     socklen_t sin_len = sizeof(cli_addr);
@@ -252,15 +245,12 @@ void server::sanity(const std::vector<fpollfd> events) {
             file_assert(!event.read, "closing connection polled for read");
             file_assert(event.write, "closing connection polled but not for write");
         }
-        
-        
+
     }
     for(const auto& c : connections) {
         file_assert(c.activity != status::closed, "closed socket polled");
     }
-    
-    
-    
+
     logger << "connections OK" << std::endl;
 }
 

@@ -24,22 +24,10 @@
 
 
 int main() {
-    if(logger.fail()) {
-        std::cout << "logger problem" << std::endl;
-        std::terminate();
-    }
-    file_assert(true, "file_assert failed...");
-    
-    std::time_t start_time = std::chrono::system_clock::to_time_t(std::chrono::system_clock::now());
-
-    logger << "Start server at: " << std::ctime(&start_time);
-    
     fbw::TLS().test_handshake();
     
     uint64_t loop_counter = 0;
-    
-    
-    logger << "start main()" << std::endl;
+
     try {
             {
                 std::ifstream t(fbw::key_file);
@@ -69,7 +57,6 @@ int main() {
         };
         
         while(true) {
-            logger << "loop count: " << loop_counter << std::endl;
             loop_counter++;
             webserver.serve_some();
         }

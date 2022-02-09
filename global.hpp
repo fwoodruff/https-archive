@@ -37,7 +37,6 @@ extern const ssize_t BUFFER_SIZE;
 
 using ustring = std::basic_string<uint8_t>;
 [[nodiscard]] inline uint64_t safe_asval(const ustring& s, size_t idx, size_t bytes) {
-    //logger << "safe_asval()" << std::endl;
     uint64_t len = 0;
     for(size_t i = idx; i < idx + bytes; i ++) {
         len <<=8;
@@ -47,7 +46,6 @@ using ustring = std::basic_string<uint8_t>;
 }
 
 inline void write_int(uint64_t x, uint8_t* const s, short n) noexcept {
-    //logger << "write_int()" << std::endl;
     assert(static_cast<size_t>(n) >= sizeof(uint64_t) or x < (1ull << (n*8)));
     assert(static_cast<size_t>(n) <= sizeof(uint64_t)); // avoids ub
     for(short i = n-1; i >= 0; i--) {

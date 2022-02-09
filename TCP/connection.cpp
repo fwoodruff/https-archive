@@ -36,12 +36,10 @@ connection::connection(time_point<steady_clock> tp, std::unique_ptr<receiver> rc
     m_socket(std::move(socket)),
     primary_receiver (std::move(rcv)),
     activity(status::read_only) {
-    
-    logger << "connection::connection()" << std::endl;
+
 }
 
 void connection::push_receiver(std::unique_ptr<receiver> r) {
-    logger << "connection::push_receiver()" << std::endl;
     if(primary_receiver != nullptr) {
         r->next = std::move(primary_receiver);
     }
@@ -50,27 +48,19 @@ void connection::push_receiver(std::unique_ptr<receiver> r) {
 
 
 connection::~connection() {
-    logger << "connection::~connection()" << std::endl;
     if(context != nullptr) {
         try {
             context->del_fd(m_socket);
         } catch(const std::system_error& e) {
-            logger << e.what() << std::endl;
+            file_assert(false, e.what());
         }
     }
 }
 
 
-// handle OOB
 
 
 void connection::send_bytes_over_network() {
-    logger << "connection::send_bytes_over_network()" << std::endl;
-    logger << "cap: " << write_buffer.capacity() << std::endl;
-    
-    logger << "siz: " << write_buffer.size() << std::endl;
-    logger << "write_buffer ptr:" << std::hex << reinterpret_cast<uintptr_t>(write_buffer.data()) << std::endl;
-    
     switch(activity) {
         case status::read_only:
         case status::always_poll:
@@ -81,47 +71,32 @@ void connection::send_bytes_over_network() {
             file_assert(false, "cannot send bytes over closed connection");
             return;
     }
-    logger << "a. " << std::flush;
-    
-    
-    
-    // MSG_NOSIGNAL is not necessary because I have called setsockopt(SO_NOSIGPIPE) in server.cpp
-    // I have included this anyway for emphasis.
-    // clients disconnecting should not crash the program.
-    
+
+    // Note to future self:
     // Interplay between setsockopt(TCP_NO_DELAY) and send(MSG_MORE) flags
     // would be plausible optimisations for speeding up handshakes.
     // This would require distinguising between handshake packets and application packets
+    
+    // MSG_NOSIGNAL: clients disconnecting should not crash the program!
     auto bytes = m_socket.send(write_buffer.data(), write_buffer.size(), MSG_NOSIGNAL);
-    logger << "b. " << bytes << ": " << std::flush;
     file_assert(bytes <= write_buffer.size(), "bytes <= write_buffer.size()");
-
-    logger << "c. " << std::flush;
     if(bytes == write_buffer.size()) {
-        logger << "d. " << std::flush;
         write_buffer.clear();
     } else {
-        logger << "e. " << std::flush;
         auto tmp = write_buffer.substr(bytes);
-        logger << "ea. " << std::flush;
         write_buffer = tmp;
     }
-    logger << "f. " << std::flush;
     if(write_buffer.empty() and activity == status::closing) {
-        logger << "g. " << std::flush;
         activity = status::closed;
     }
-    
-    
+
     if(write_buffer.size() > 2000000) {
-        logger << "h. " << std::flush;
         throw std::runtime_error("too much requested");
     }
-    logger << "connection::send_bytes_over_network() end" << std::endl;
+    
 }
 
 ustring connection::receive_bytes_from_network() {
-    logger << "connection::receive_bytes_from_network()" << std::endl;
     ustring out;
     out.resize(BUFFER_SIZE);
     const auto bytes = m_socket.recv(out.data(), out.size(), 0);
@@ -137,13 +112,11 @@ ustring connection::receive_bytes_from_network() {
 }
 
 ssize_t connection::queue_bytes_for_write(ustring bytes) {
-    logger << "connection::queue_bytes_for_write()" << std::endl;
     write_buffer.append(bytes);
     return write_buffer.size();
 }
 
 bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanoseconds> loop_time) {
-    logger << "connection::handle_connection()" << std::endl;
     try {
         file_assert(primary_receiver != nullptr, "bad primary receiver");
         switch(activity) {
@@ -152,15 +125,12 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                 if(event.read) {
                     ustring out = receive_bytes_from_network();
                     auto st_msg = primary_receiver->handle(std::move(out));
-                    logger << "done primary_receiver->handle(out)" << std::endl;
                     activity = st_msg.m_status;
                     write_buffer.append(st_msg.m_response);
                 }
                 if(event.write) {
                     send_bytes_over_network();
-                } else {
-                    //logger << "a." << std::flush;
-                }
+                } 
                 break;
             case status::always_poll:
                 if(write_buffer.empty()) {
@@ -197,7 +167,7 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
     } catch(...) {
         file_assert(false, "uncaught exception in handle_connection");
     }
-    logger << "handled connection" << std::endl;
+    
 
     m_time_set = loop_time;
     
@@ -207,7 +177,7 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                           (activity == status::always_poll and write_buffer.empty()));
     // fix me
     context->mod_fd(m_socket, poll_for_read, poll_for_write);
-    logger << "dereference OK" << std::endl;
+    
     
     if(activity == status::closed) {
         file_assert(!poll_for_read, "polling for read on about to be deleted connection");

@@ -11,11 +11,11 @@
 #include <fstream>
 
 #if __linux__
-//const std::string fbw::key_file = "/etc/letsencrypt/live/freddiewoodruff.co.uk/fullchain.pem";
-//const std::string fbw::certificate_file = "/etc/letsencrypt/live/freddiewoodruff.co.uk/privkey.pem";
+const std::string fbw::key_file = "/etc/letsencrypt/live/freddiewoodruff.co.uk/privkey.pem";
+const std::string fbw::certificate_file = "/etc/letsencrypt/live/freddiewoodruff.co.uk/fullchain.pem";
 
-const std::string fbw::key_file = "ecc_key.pem";
-const std::string fbw::certificate_file = "ecc_cert.pem";
+//const std::string fbw::key_file = "ecc_key.pem";
+//const std::string fbw::certificate_file = "ecc_cert.pem";
 const std::string fbw::MIME_folder = "MIME";
 const std::string fbw::rootdir ("webpages");
 const ssize_t fbw::MAX_SOCKETS = 5000;
