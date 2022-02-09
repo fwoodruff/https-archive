@@ -48,11 +48,7 @@ status_message HTTP::handle(ustring uinput) noexcept {
                     return {to_unsigned(""), status::read_only};
                 }
             }
-            logger << "-----------------------------\n";
-            logger << "Client header:" << std::endl;
-            logger << header << std::endl;
-            logger << "body size extracted: " << body.size() << std::endl;
-            logger << "-----------------------------\n";
+            
             
             std::string response = respond(m_folder, std::move(header), std::move(body));
             
@@ -60,7 +56,6 @@ status_message HTTP::handle(ustring uinput) noexcept {
             output.m_status = status::read_only;
         }
     } catch(const http_error& e) {
-        logger << e.what() << std::endl;
         header = "";
         output.m_response = to_unsigned(std::string(e.what()) + "\r\n");
         output.m_status = status::closing;

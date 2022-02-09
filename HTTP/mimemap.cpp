@@ -88,6 +88,7 @@ std::string extension_from_path(std::string path) {
     if(filename.substr(filename.size()-delimiter.size()) == delimiter) {return "";}
     if(filename.find(delimiter)==std::string::npos) {return ""; }
     
+    
     for(long i = filename.size()-delimiter.size(); i >= 0; --i) {
         if(filename.substr(i,delimiter.size()) == delimiter) {
             auto ext = filename.substr(i+delimiter.size());
@@ -96,7 +97,8 @@ std::string extension_from_path(std::string path) {
             }
         }
     }
-    return filename.substr(filename.find_last_of(delimiter) + delimiter.size());
+    auto str = filename.substr(filename.find_last_of(delimiter) + delimiter.size());
+    return str;
 }
 
 /*

@@ -70,13 +70,22 @@ std::string file_to_http(const std::string& rootdir, std::string filename) {
     if( filename == "/") {
         filename = "/index.html";
     }
+    
+    if(filename.find(".") == std::string::npos) {
+        filename.append(".html");
+    }
+    
     std::string MIME;
     if(filename == "/favicon.ico") {
         MIME = "image/webp";
     } else {
-        MIME = get_MIME(extension_from_path(filename));
+        auto extension = extension_from_path(filename);
+        MIME = get_MIME(std::move(extension));
     }
+    
+    
     std::ifstream t(rootdir+filename);
+    
     if(t.fail()){
         throw http_error("404 Not Found");
     }
