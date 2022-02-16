@@ -24,9 +24,10 @@ class HTTP final : public receiver {
     std::string header;
 
     std::string m_folder;
+    bool m_redirect;
 public:
     status_message handle(ustring) noexcept final override;
-    HTTP(std::string folder);
+    HTTP(std::string folder, bool redirect);
     
 };
 

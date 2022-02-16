@@ -11,11 +11,13 @@
 #include "global.hpp"
 
 #include <iostream>
+#include <sstream>
 #include <memory>
+
 
 namespace fbw {
 
-HTTP::HTTP(std::string folder) : m_folder(folder) {}
+HTTP::HTTP(std::string folder, bool redirect) : m_folder(folder), m_redirect(redirect) {}
 
 
 
@@ -36,7 +38,7 @@ status_message HTTP::handle(ustring uinput) noexcept {
         
         if(!header.empty()) {
             const auto [delimiter, size] = body_size(header);
-            file_assert(delimiter == "" or size == 0, "delimiter == "" or size == 0");
+            file_assert(delimiter == "" or size == 0, "no delimiter or size == 0");
             std::string body;
             if(delimiter != "") {
                 body += extract(input, delimiter);
@@ -49,15 +51,32 @@ status_message HTTP::handle(ustring uinput) noexcept {
                 }
             }
             
+            std::string response;
             
-            std::string response = respond(m_folder, std::move(header), std::move(body));
+            if(m_redirect) {
+                response = redirect(std::move(header), domain_name);
+            } else {
+                response = respond(m_folder, std::move(header), std::move(body));
+            }
+            header = "";
+            
             
             output.m_response = to_unsigned(response);
             output.m_status = status::read_only;
         }
     } catch(const http_error& e) {
         header = "";
-        output.m_response = to_unsigned(std::string(e.what()) + "\r\n");
+        
+        auto error_message = std::string(e.what());
+        
+        std::ostringstream oss;
+        oss << "HTTP/1.1 " << error_message << "\r\n"
+        << "Content-Type: text/html; charset=UTF-8\r\n"
+        <<"Content-Length: " << error_message.size() << "\r\n"
+        << "Server: FredPi/0.1 (Unix) (Raspbian/Linux)\r\n"
+        << "\r\n"
+        << error_message;
+        output.m_response = to_unsigned(oss.str());
         output.m_status = status::closing;
     }
     return output;

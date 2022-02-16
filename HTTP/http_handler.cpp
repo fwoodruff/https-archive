@@ -25,12 +25,12 @@ namespace fbw {
  */
 std::string respond(const std::string& rootdirectory, std::string header, std::string body) {
     const auto method = get_method(header);
-    if(method.size()<2) {
+    if(method.size() < 3) {
         throw http_error("400 Bad Request");
     }
     
     const std::string& filename = method[1];
-    if(method.size() > 2 and (method[2] != "HTTP/1.0" and method[2] != "HTTP/1.1")) {
+    if(method[2] != "HTTP/1.0" and method[2] != "HTTP/1.1") {
         throw http_error("505 HTTP Version Not Supported");
     }
     
@@ -93,12 +93,6 @@ std::string file_to_http(const std::string& rootdir, std::string filename) {
     buffer << t.rdbuf();
     std::string file_contents = buffer.str();
 
-    /*
-     // I don't trust the reinterpret cast
-    sha256 eTag_hasher;
-    eTag_hasher.update(reinterpret_cast<uint8_t*>(&*file_contents.data()), file_contents.size());
-    auto eTag = eTag_hasher.hash();
-     */
     auto time = std::time(0);
     if((std::time_t)(-1) == time) {
         throw http_error("500 Internal Server Error");
@@ -110,14 +104,50 @@ std::string file_to_http(const std::string& rootdir, std::string filename) {
         << "Expires: " << timestring(time + day) << "\r\n"
         << "Content-Type: " << MIME << (MIME.substr(0,4)=="text" ? "; charset=UTF-8" : "") << "\r\n"
         << "Content-Length: " << file_contents.size() << "\r\n"
-        // << "Last-Modified: " << timestring(get_file_date(file.get())) << "\r\n"
-        << "Server: FredPi/0.1 (Unix) (Raspbian/Linux)\r\n"
-        // << "ETag: " << bytes_to_hex_string(eTag.data(), eTag.size()) << "\r\n"
+        << "Server: " << make_server_name() << "\r\n"
+        << "ETag: " << make_eTag(file_contents) << "\r\n"
         << "\r\n"
         << file_contents;
     
     std::string var = oss.str();
     return var;
 }
+
+
+std::string redirect(std::string header, std::string domain) {
+    const auto method = get_method(header);
+    if(method.size() < 3) {
+        throw http_error("400 Bad Request");
+    }
+    
+    std::string filename = method[1];
+    
+    if( filename == "/") {
+        filename = "/index.html";
+    }
+    
+    std::string MIME;
+    if(filename == "/favicon.ico") {
+        MIME = "image/webp";
+    } else {
+        auto extension = extension_from_path(filename);
+        MIME = get_MIME(std::move(extension));
+    }
+    
+    std::string body = "HTTP/1.1 301 Moved Permanently";
+    
+    std::ostringstream oss;
+    oss << "HTTP/1.1 301 Moved Permanently\r\n"
+        << "Location: https://" << domain << filename << "\r\n"
+        << "Content-Type: " << MIME << (MIME.substr(0,4)=="text" ? "; charset=UTF-8" : "") << "\r\n"
+        << "Content-Length: " << body.size() << "\r\n"
+        << "Server: " << make_server_name() << "\r\n"
+        << "\r\n"
+        << body;
+    
+    std::string var = oss.str();
+    return var;
+}
+
 
 } // fbw
