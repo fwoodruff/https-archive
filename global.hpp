@@ -25,6 +25,8 @@ extern const std::string key_file;
 extern const std::string certificate_file;
 extern const std::string MIME_folder;
 extern const std::string rootdir;
+extern const std::string domain_name;
+
 extern const ssize_t MAX_SOCKETS;
 extern const int timeoutms;
 extern const ssize_t BUFFER_SIZE;
@@ -55,11 +57,6 @@ inline void write_int(uint64_t x, uint8_t* const s, short n) noexcept {
 }
 
 
-
-
-
-
-
 [[nodiscard]] inline ustring to_unsigned(std::string s) {
     ustring out;
     out.append(s.cbegin(), s.cend());
@@ -82,6 +79,15 @@ inline void file_assert(bool assertion, const std::string_view& message) {
         std::terminate();
     }
 }
+
+
+template<typename CALLABLE>
+class raii_guard {
+    CALLABLE dtor;
+public:
+    raii_guard(CALLABLE callable) : dtor(callable) {}
+    ~raii_guard() { dtor(); }
+};
 
 
 #endif /* global_hpp */

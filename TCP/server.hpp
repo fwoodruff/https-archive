@@ -39,19 +39,19 @@ class server {
     static constexpr int max_listen = 10;
     poll_context m_poller;
     clist connections;
-    server_socket m_sock;
+    server_socket m_https_socket;
+    server_socket m_redirect_socket;
 
-    void accept_connection(tp);
+    void accept_connection(const server_socket& sc, tp, std::function<std::unique_ptr<receiver>()> receiver_stack);
     void handle_event(fpollfd, tp) noexcept;
     
-    std::string m_service;
-    
+
     void sanity(const std::vector<fpollfd> events);
     
-    std::function<std::unique_ptr<receiver>()> m_factory;
+    
     
 public:
-    server(std::string service, std::function<std::unique_ptr<receiver>()> receiver_stack);
+    server();
     ~server(); // on windows startup/shutdown
     void serve_some();
     

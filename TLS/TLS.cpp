@@ -38,6 +38,7 @@
 #include "keccak.hpp"
 #include "block_chain.hpp"
 #include "galois_counter.hpp"
+#include "chacha20poly1305.hpp"
 
 #include <iostream>
 #include <iomanip>
@@ -64,6 +65,14 @@ status_message TLS::handle(ustring input) noexcept {
     file_assert(input.size() < 20000, "TLS handle input size too much");
     
     status_message output;
+    
+    
+    if(more_to_send) {
+        output =  generate_packet();
+        return output;
+    }
+    
+    
     output.m_status = status::read_only;
     
     try {
@@ -518,9 +527,32 @@ void TLS::server_handshake_finished(status_message& output) {
     output.m_response.append(out.serialise());
 }
 
+
+status_message TLS::generate_packet() {
+    assert(more_to_send == true);
+    size_t record_size = std::clamp(int(randomgen.randgen64() % 14000), 256, 10000);
+    record_size = std::min(record_size, app_out.m_response.size() - send_byte_idx);
+    
+    tls_record out(ContentType::Application);
+    out.m_contents.append(&app_out.m_response[send_byte_idx],
+                          &app_out.m_response[send_byte_idx+record_size]);
+    out = cipher_context->encrypt(std::move(out));
+
+    status_message output;
+    output.m_response = out.serialise();
+    
+    send_byte_idx += record_size;
+    if(send_byte_idx == app_out.m_response.size()) {
+        more_to_send = false;
+        output.m_status = app_out.m_status;
+    } else {
+        output.m_status = status::write_only;
+    }
+    return output;
+}
+
+
 void TLS::client_application_data(const ustring& application_data, status_message& output) {
-    
-    
     if (is_client_hello_done == false or
         is_client_key_exchange_done == false or
         is_change_cipher_spec_done == false or
@@ -529,24 +561,10 @@ void TLS::client_application_data(const ustring& application_data, status_messag
         throw ssl_error("handshake already done", AlertLevel::fatal, AlertDescription::unexpected_message);
     }
     
-    const auto app_out = next->handle(application_data);
-    
-    output.m_status = app_out.m_status;
-    int record_size = 1;
-    for(size_t i = 0; i < app_out.m_response.size(); i += record_size) {
-        // break up the http byte stream randomly
-        record_size = std::clamp(int(randomgen.randgen64() % (7*app_out.m_response.size()/4)), 256, 10000);
-        
-        tls_record out(ContentType::Application);
-        out.m_contents.append(&app_out.m_response[i], &app_out.m_response[std::min(i+record_size, app_out.m_response.size())]);
-        if(is_change_cipher_spec_done) {
-            file_assert(is_client_hello_done, "handshake finished without client hello");
-            out = cipher_context->encrypt(std::move(out));
-        } else {
-            throw ssl_error("Unwilling to respond on unencrypted channel", AlertLevel::fatal, AlertDescription::insufficient_security);
-        }
-        output.m_response.append(out.serialise());
-    }
+    app_out = next->handle(application_data);
+    send_byte_idx = 0;
+    more_to_send = true;
+    output = TLS::generate_packet();
 }
 
 void TLS::tls_notify_close(status_message& output) {
@@ -649,6 +667,15 @@ std::array<uint8_t,48> TLS::make_master_secret(const std::unique_ptr<const hash_
 unsigned short TLS::cipher_choice(const ustring& s) {
     for(size_t i = 0; i < s.size(); i += 2) {
         uint16_t x = safe_asval(s, i, 2);
+        /*
+        if (x == static_cast<uint16_t>(cipher_suites::TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256)) {
+            cipher_context = std::make_unique<cha::ChaCha20_Poly1305>();
+            hasher_factory = std::make_unique<sha256>();
+            handshake_hasher = hasher_factory->clone();
+            return x;
+        }
+        */
+        
         if (x == static_cast<uint16_t>(cipher_suites::TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA)) {
             cipher_context = std::make_unique<aes::AES_CBC_SHA>(16);
             hasher_factory = std::make_unique<sha256>();

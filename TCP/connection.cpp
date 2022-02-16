@@ -63,7 +63,7 @@ connection::~connection() {
 void connection::send_bytes_over_network() {
     switch(activity) {
         case status::read_only:
-        case status::always_poll:
+        case status::write_only:
         //case status::dormant:
         case status::closing:
             break;
@@ -105,9 +105,6 @@ ustring connection::receive_bytes_from_network() {
         throw std::runtime_error("closing connection");
     }
     out.resize(bytes);
-    
-    
-    
     return out;
 }
 
@@ -121,6 +118,7 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
         file_assert(primary_receiver != nullptr, "bad primary receiver");
         switch(activity) {
             case status::read_only:
+                
             //case status::dormant:
                 if(event.read) {
                     ustring out = receive_bytes_from_network();
@@ -130,28 +128,21 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                 }
                 if(event.write) {
                     send_bytes_over_network();
-                } 
-                break;
-            case status::always_poll:
-                if(write_buffer.empty()) {
-                    if(event.read) {
-                        ustring out = receive_bytes_from_network();
-                        
-                        auto st_msg = primary_receiver->handle(std::move(out));
-                        activity = st_msg.m_status;
-                        write_buffer.append(st_msg.m_response);
-                    }
-                }
-                if(event.write) {
-                    
-                    send_bytes_over_network();
                 }
                 break;
+            case status::write_only:
+            {
+                auto st_msg = primary_receiver->handle({});
+                activity = st_msg.m_status;
+                write_buffer.append(st_msg.m_response);
+                send_bytes_over_network();
+            }
+                break;
+            
             case status::closing:
                 file_assert(!event.read, "closing socket polled for read");
                 
                 if(event.write) {
-                    
                     send_bytes_over_network();
                     
                 }
@@ -171,10 +162,12 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
 
     m_time_set = loop_time;
     
+    
+    
     bool poll_for_read  = (activity ==  status::read_only) or
-                          (activity == status::always_poll and write_buffer.empty());
+                          (activity == status::write_only and write_buffer.empty());
     bool poll_for_write = activity != status::closed and (!write_buffer.empty() or
-                          (activity == status::always_poll and write_buffer.empty()));
+                          (activity == status::write_only and write_buffer.empty()));
     // fix me
     context->mod_fd(m_socket, poll_for_read, poll_for_write);
     

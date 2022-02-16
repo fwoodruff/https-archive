@@ -78,6 +78,13 @@ class TLS final : public receiver {
                                               std::array<uint8_t,32> client_public,
                                               std::array<uint8_t,32> server_random,
                                               std::array<uint8_t,32> client_random);
+    
+    bool more_to_send = false;
+    size_t send_byte_idx = 0;
+    status_message app_out {};
+    
+    status_message generate_packet();
+    
 public:
     
     

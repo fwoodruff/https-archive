@@ -38,7 +38,7 @@
 #include <fstream>
 #include <chrono>
 #include <sstream>
-#include <thread>
+
 #include <variant>
 
 
@@ -74,7 +74,6 @@ server_socket get_listener_socket(std::string service) {
     if(::getaddrinfo(nullptr, service.c_str(), &hints, &ai) != 0) {
         throw std::system_error(errno, std::generic_category());
     }
-    
 
     for(p = ai; p != nullptr; p = p->ai_next) {
         try {
@@ -102,14 +101,14 @@ server_socket get_listener_socket(std::string service) {
  The ctor argument is the data stream handler
  The service is used to infer the correct port number
  */
-server::server(std::string service, std::function<std::unique_ptr<receiver>()> receiver_stack) : m_factory(receiver_stack) {
-    m_sock = get_listener_socket(service.c_str());
-    m_poller.add_fd(m_sock, static_fd::acceptor, true, false);
-    m_service = service;
+server::server() {
+    m_https_socket = get_listener_socket("https");
+    m_redirect_socket = get_listener_socket("http");
     
-    
-    
-    
+    m_poller.add_fd(m_https_socket, static_fd::https_acceptor, true, false);
+    m_poller.add_fd(m_redirect_socket, static_fd::http_acceptor, true, false);
+
+
     // interthread/intersocket, need a way for server to initiate message.
     // server-wide pipe
     // write_more and await_pipe maps, to 'add' those events to active.
@@ -145,7 +144,7 @@ template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 void server::serve_some() {
     const auto loop_time = steady_clock::now();
     bool can_accept = connections.size() < static_cast<size_t>(MAX_SOCKETS - 11);
-    m_poller.mod_fd(m_sock, can_accept, false);
+    m_poller.mod_fd(m_https_socket, can_accept, false);
 
     const auto events = m_poller.get_events(!connections.empty());
     
@@ -160,9 +159,27 @@ void server::serve_some() {
                 }
             },
             [&](static_fd arg) {
-                file_assert(arg == static_fd::acceptor, "bad event");
                 try {
-                    accept_connection(loop_time);
+                    switch (arg) {
+                        case static_fd::https_acceptor:
+                            accept_connection(m_https_socket,
+                                              loop_time,
+                                            [] {
+                                auto x = std::make_unique<fbw::TLS>();
+                                x->next = std::make_unique<fbw::HTTP>(fbw::rootdir, false);
+                                return x;
+                            });
+                            break;
+                        case static_fd::http_acceptor:
+                            accept_connection(m_redirect_socket,
+                                              loop_time,
+                                        [] {
+                                return std::make_unique<fbw::HTTP>(fbw::rootdir, true);
+                            });
+                            break;
+                        default:
+                            break;
+                    }
                 } catch(const std::runtime_error& e) {
                     logger << e.what() << std::endl;
                 }
@@ -182,24 +199,16 @@ void server::serve_some() {
 /*
  Add new connections to the connection list
  */
-void server::accept_connection(tp loop_time) {
+void server::accept_connection(const server_socket& sock, tp loop_time,
+                               std::function<std::unique_ptr<receiver>()> receiver_stack) {
     
     struct sockaddr_storage cli_addr;
     socklen_t sin_len = sizeof(cli_addr);
-    auto skt = m_sock.accept((sockaddr *) &cli_addr, &sin_len);
+    auto skt = sock.accept((sockaddr *) &cli_addr, &sin_len);
     skt.fcntl(F_SETFL, O_NONBLOCK);
-    
-    // This is nice but when the DNS server goes down this waits for a timeout.
-    /*
-    try {
-        auto [full_name, ip ] = skt.cli_socketinfo();
-        logger << full_name << " ... " << ip << std::endl;
-    } catch(const std::runtime_error& e) {
-        logger << "Bad DNS" << std::endl;
-    }
-    */
-    
-    connections.emplace_front(loop_time, m_factory(), &m_poller, std::move(skt));
+
+
+    connections.emplace_front(loop_time, receiver_stack(), &m_poller, std::move(skt));
     
     m_poller.add_fd(connections.front().m_socket, connections.begin(), true, false);
 

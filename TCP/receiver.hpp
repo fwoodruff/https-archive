@@ -17,7 +17,7 @@
 namespace fbw {
 
 enum class status : unsigned {
-    read_only, always_poll, /*dormant,*/ closing, closed
+    read_only, write_only, /*dormant,*/ closing, closed
     /*
      read_only means event loop should await data received from client
      read_write means poll if either available

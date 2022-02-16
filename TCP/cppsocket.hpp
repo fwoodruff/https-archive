@@ -24,7 +24,8 @@ class connection;
 class server_socket;
 
 enum class static_fd {
-    acceptor // pipe also
+    https_acceptor, // pipe also
+    http_acceptor // pipe also
 };
 
 
