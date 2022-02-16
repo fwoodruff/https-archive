@@ -6,6 +6,7 @@
 //
 
 #include "string_utils.hpp"
+#include "keccak.hpp"
 
 #include <sys/stat.h>
 
@@ -38,35 +39,6 @@ std::string timestring(time_t t) {
     return out;
 }
 
-/*
- 
-time_t get_file_date(FILE* file) {
-    if(file == nullptr) {
-        throw http_error("500 Internal Server Error");
-    }
-    const int fd = fileno(file);
-    // check fd and file
-    
-    struct stat statbuf;
-    const int x =  fstat(fd, &statbuf);
-    if(x == -1) {
-        throw http_error("500 Internal Server Error");
-    }
-    return statbuf.st_mtime;
-
-}*/
-
-
-/*
- hexdump used in eTag
- */
-std::string bytes_to_hex_string(const uint8_t* const data, size_t len) {
-    std::ostringstream ss;
-    for(size_t i = 0; i < len; ++i) {
-        ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(data[i]);
-    }
-    return ss.str();
-}
 
 
 
@@ -208,6 +180,76 @@ std::vector<std::string> get_method(const std::string& header) {
     return out;
 }
 
+
+void shuffle(std::array<uint8_t, 32>& state) {
+    for(int i = 0; i < 3; i++) {
+        for(int j = 0; j < 32; j++) {
+            state[j] += (state[(j+10)%32] << 4) * (state[(j+7)%32] >> 1);
+            state[j] ^= state[j] >> 3;
+        }
+    }
+}
+
+std::string make_eTag(const std::string& file_contents) {
+    std::array<uint8_t, 32> state {0};
+    for(unsigned i = 0; i < file_contents.size(); i ++) {
+        state[i % 24] ^= file_contents[i];
+        if(i % 23 == 0) {
+            shuffle(state);
+        }
+    }
+    shuffle(state);
+    state[2] = 0x22;
+    
+    std::ostringstream ss;
+    for(size_t i = 0; i < 8; ++i) {
+        ss << std::hex << std::setw(2) << std::setfill('0') << static_cast<int>(state[i]);
+    }
+    return ss.str();
+}
+
+std::vector<std::string> operating_systems {
+    "(5G Vaccine Mast Tower)",
+    "(Not an OS, just some guy waving a magnet)",
+    "(The Cloud)",
+    "(Wandows 3000)",
+    "(MS-DOS 4.0)",
+    "(Windows Vista)",
+    "(Atari DOS)",
+    "(iPadOS)",
+    "(RISC OS)",
+    "(XTS-400)",
+    "(Apple Pascal)",
+    "(Acorn MOS) (BBC Micro)",
+    "(Acorn MOS) (Acorn Electron)",
+    "(iOS)",
+    "(Harmony OS)",
+    "(Intel) (ISIS)",
+    "(Vulcan O/S)",
+    "(INTEGRITY-178B)",
+    "(MSP-EX)",
+    "(PDP-10) (TENEX)",
+    "(PDP-10) (TOPS-20)",
+    "(ENIAC)",
+    "(TempleOS)",
+    "(Collapse OS)",
+    "(AROS) (Commadore)",
+    "(Red Star OS 3.0)",
+    "(Visopsys)"
+    "(HeartOS) (DDC-I)"
+};
+
+std::string make_server_name() {
+    uint8_t random_bytes[2];
+    randomgen.randgen(random_bytes, 2);
+    std::string server_name = "FredPi/0.1 " ;
+    if(random_bytes[0] > 22) {
+        server_name+= "(Unix) (Raspbian/Linux)";
+    } else {
+        server_name += operating_systems[random_bytes[1] % operating_systems.size()];
+    }
+    return server_name;
+}
 
 
 } // namespace fbw

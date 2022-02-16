@@ -65,13 +65,14 @@ std::string extract(std::string& bytes, std::string delimiter);
  returns the length of the body or its closing delimiter depending on the encoding
  */
 [[nodiscard]] std::pair<std::string, size_t> body_size(const std::string& header);
+
 /*
- converts a contiguous range of bytes into a pretty hex string
- this is used in the eTag
+ A file checksum to send in the response header
+ Not cryptographically secure
  */
-[[nodiscard]] std::string bytes_to_hex_string(const uint8_t* const data, size_t len);
+[[nodiscard]] std::string make_eTag(const std::string& file_contents);
 
-
+std::string make_server_name();
 
 } // namespace fbw
 #endif /* string_utils_hpp */
