@@ -20,13 +20,15 @@
 #include <string>
 #include <array>
 #include <fstream>
-#include <thread>
+
+
+#include "chacha20poly1305.hpp"
 
 
 int main() {
-    fbw::TLS().test_handshake();
-    
-    uint64_t loop_counter = 0;
+    //fbw::cha::test();
+    //exit(1);
+
 
     try {
             {
@@ -48,16 +50,10 @@ int main() {
                 }
             }
         
-        fbw::server webserver {
-            "https", [] {
-                auto x = std::make_unique<fbw::TLS>();
-                x->next = std::make_unique<fbw::HTTP>(fbw::rootdir);
-                return x;
-            }
-        };
+        
+        fbw::server webserver { };
         
         while(true) {
-            loop_counter++;
             webserver.serve_some();
         }
     } catch (const std::system_error& e) {
