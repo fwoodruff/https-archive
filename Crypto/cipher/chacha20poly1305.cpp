@@ -59,8 +59,7 @@ std::array<uint8_t, 64> chacha20(const std::array<uint8_t, 32>& key, const std::
     for(int i = 0; i < 3; i++) {
         state[i+13] = asval_bigend(&nonce[i*4]);
     }
-    
-    
+
     
     const auto state_orig = state;
     for(int j = 0; j < 10; j++) {
@@ -79,7 +78,7 @@ std::array<uint8_t, 64> chacha20(const std::array<uint8_t, 32>& key, const std::
     return out;
 }
 
-ustring chacha20_encrypt(   const std::array<uint8_t, 32>& key,
+ustring chacha20_xorcrypt(   const std::array<uint8_t, 32>& key,
                             uint32_t blockid,
                             const std::array<uint8_t, 12>& nonce,
                             const ustring& message) {
@@ -100,7 +99,7 @@ ustring chacha20_encrypt(   const std::array<uint8_t, 32>& key,
     return out;
 }
 
-void poly1305aes_test_clamp(uint8_t* r) {
+void poly1305_clamp(uint8_t* r) {
      r[3] &= 15;
      r[7] &= 15;
      r[11] &= 15;
@@ -110,20 +109,57 @@ void poly1305aes_test_clamp(uint8_t* r) {
      r[12] &= 252;
 }
 
-std::array<uint8_t, 16> poly1305_mac(const ustring message, const std::array<uint8_t, 32>& key) {
-    constexpr uVar<192> prime130_5 ("0x3fffffffffffffffffffffffffffffffb");
+using u192 = uVar<192>;
+using u384 = uVar<384>;
+constexpr u192 prime130_5 ("0x3fffffffffffffffffffffffffffffffb");
+constexpr u192 magic_poly("0xa3d70a3d70a3d70cccccccccccccccccccccccccccccccd");
+constexpr u192 poly_RRP ("0x190000000000000000000000000000000");
+
+constexpr u192 REDCpoly(u384 T) noexcept {
+    u192 m = u192(u192(T) * magic_poly);
+    u384 t = (T + (m * prime130_5))>>192;
+    u192 pri = prime130_5;
+    const auto prime = u384(pri);
+    if(t >= prime) {
+        return u192(t - prime);
+    } else {
+        return u192(t);
+    }
+}
+
+u192 add_mod(u192 x, u192 y , u192 mod) noexcept {
+    auto sum = x + y;
+    assert(sum >= x);
+    if (sum > mod) {
+        sum -= mod;
+    }
+    return sum;
+}
+
+ct_u256 sub_mod(ct_u256 x, ct_u256 y, ct_u256 mod) noexcept {
+    if(x > y) {
+        return x - y;
+    } else {
+        return (mod - y) + x;
+    }
+}
+
+
+std::array<uint8_t, 16> poly1305_mac(const ustring& message, const std::array<uint8_t, 32>& key) {
+    
     std::array<uint8_t, 24> r_bytes {0};
     std::copy_n(&key[0], 16, r_bytes.begin());
-    poly1305aes_test_clamp(&r_bytes[0]);
+    poly1305_clamp(&r_bytes[0]);
     std::reverse(r_bytes.begin(), r_bytes.end());
     
     std::array<uint8_t, 24> s_bytes {0};
     std::copy_n(&key[16], 16, s_bytes.rbegin());
 
-    uVar<192> accumulator ("0x0");
-    uVar<192> r(r_bytes);
-    uVar<192> s(s_bytes);
-
+    u192 accumulator ("0x0");
+    u192 r(r_bytes);
+    u192 s(s_bytes);
+    
+    auto rMonty = REDCpoly(r * poly_RRP);
 
     for(int i = 0; i < ((message.size()+15)/16)*16; i+=16) {
         std::array<uint8_t,24> inp {0};
@@ -134,22 +170,18 @@ std::array<uint8_t, 16> poly1305_mac(const ustring message, const std::array<uin
         std::copy_n(&message[i], siz, inp.begin());
         inp[siz] = 1;
         std::reverse(inp.begin(), inp.end());
-        
-        uVar<192> n(inp);
 
-        accumulator += n;
-        accumulator = (accumulator * r) % prime130_5;
+        accumulator = add_mod(accumulator, REDCpoly(u192(inp) * poly_RRP), prime130_5);
+        accumulator = REDCpoly(accumulator * rMonty);
         
+         
     }
-    
+    accumulator = REDCpoly(u384(accumulator));
     
     accumulator += s;
-    
     auto out = accumulator.serialise();
     std::array<uint8_t, 16> out_str;
-    
     std::copy_n(out.rbegin(), 16, out_str.begin());
-    
     return out_str;
 }
 
@@ -164,84 +196,111 @@ std::array<uint8_t, 32> poly1305_key_gen(const std::array<uint8_t, 32>& key, con
 
 
 std::pair<ustring, std::array<uint8_t, 16>>
-chacha20_aead_encrypt(ustring aad, std::array<uint8_t, 32> key, std::array<uint8_t, 8> iv,
-                      std::array<uint8_t, 4> constant, ustring plaintext) {
-    std::array<uint8_t, 12> nonce;
-    std::copy(constant.begin(), constant.end(), nonce.begin());
-    std::copy(iv.begin(), iv.end(), nonce.begin()+8);
+chacha20_aead_crypt(ustring aad, std::array<uint8_t, 32> key, std::array<uint8_t, 12> nonce, ustring text, bool do_encrypt) {
     
     auto otk = poly1305_key_gen(key, nonce);
-    
-    auto ciphertext = chacha20_encrypt(key, 1, nonce, plaintext);
-    
-    for(unsigned c : ciphertext) {
-        std::cout << c << " ";
-    }
-    std::cout << std::endl << std::endl;
+    auto xortext = chacha20_xorcrypt(key, 1, nonce, text);
 
-    std::array<uint8_t, 4> aad_size;
-    std::array<uint8_t, 4> cip_size;
+    std::array<uint8_t, 8> aad_size {};
+    std::array<uint8_t, 8> cip_size {};
     
     for(int i = 0; i < 4; i++) {
         aad_size[i] = (aad.size() >> (8*i)) & 0xff;
-        cip_size[i] = (ciphertext.size() >> (8*i)) & 0xff;
+        cip_size[i] = (xortext.size() >> (8*i)) & 0xff;
     }
-    //std::reverse(aad_size.begin(), aad_size.end());
-    //std::reverse(cip_size.begin(), cip_size.end());
     
-    aad.resize(((aad.size()+15)/16)*16, 0);
-    ciphertext.resize(((ciphertext.size()+15)/16)*16, 0);
+    auto & ciphertext = do_encrypt ? xortext : text;
+
+    size_t padaad = ((aad.size()+15)/16)*16 - aad.size();
+    size_t padcipher = ((ciphertext.size()+15)/16)*16 - xortext.size();
     
     ustring mac_data;
     mac_data.append(aad);
+    mac_data.append(padaad, 0);
     mac_data.append(ciphertext);
-    
-    //tag = poly1305_mac(mac_data, otk)
-    
+    mac_data.append(padcipher, 0);
     mac_data.append(aad_size.begin(), aad_size.end());
     mac_data.append(cip_size.begin(), cip_size.end());
+    
 
     auto tag = poly1305_mac(mac_data, otk);
-    return {ciphertext, tag};
+    return {xortext, tag};
 }
 
 
-void test() {
-    std::array<uint8_t, 32> key = { 0x80, 0x81, 0x82, 0x83, 0x84, 0x85, 0x86,
-        0x87, 0x88, 0x89, 0x8a, 0x8b, 0x8c, 0x8d, 0x8e, 0x8f, 0x90,
-        0x91, 0x92, 0x93, 0x94, 0x95, 0x96, 0x97, 0x98, 0x99, 0x9a, 0x9b, 0x9c, 0x9d, 0x9e, 0x9f };
+
+
+void ChaCha20_Poly1305::set_key_material(ustring material) {
     
-    std::array<uint8_t, 12> nonce = { 0x00, 0x00, 0x00, 0x00, 0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07 };
-    
-    
-    auto oo = poly1305_key_gen(key, nonce);
-    for( unsigned o : oo) {
-        std::cout << std::hex<< o << " ";
-    }
-    
-    std::string msg = "Ladies and Gentlemen of the class of '99: If I could offer you only one tip for the future, sunscreen would be it.";
-    
-    ustring umsg;
-    umsg.append(msg.begin(), msg.end());
-    
-    ustring aad = { 0x50, 0x51, 0x52, 0x53, 0xc0, 0xc1, 0xc2, 0xc3, 0xc4, 0xc5, 0xc6, 0xc7 };
-    
-    std::array<uint8_t, 8> iv = { 0x40, 0x41, 0x42, 0x43, 0x44, 0x45, 0x46, 0x47};
-    std::array<uint8_t, 4> con = { 0x07, 0x00, 0x00, 0x00 };
-    
-    auto [ciphertext, tag] =
-    chacha20_aead_encrypt(aad, key, iv, con, umsg);
-    
-    for(unsigned c : ciphertext) {
-        std::cout << c << " ";
-    }
-    std::cout << std::endl << std::endl;
-    
-    for(unsigned c : tag) {
-        std::cout << c << " ";
-    }
-    std::cout << std::endl;
-    
+    auto it = material.begin();
+    std::copy_n(it, client_write_key.size(), client_write_key.begin());
+    it += client_write_key.size();
+    std::copy_n(it, server_write_key.size(), server_write_key.begin());
+    it += server_write_key.size();
+    std::copy_n(it, client_implicit_write_IV.size(), client_implicit_write_IV.begin());
+    it += client_implicit_write_IV.size();
+    std::copy_n(it, server_implicit_write_IV.size(), server_implicit_write_IV.begin());
+    it += server_implicit_write_IV.size();
 }
+
+ustring make_additional(tls_record& record, std::array<uint8_t,8>& sequence_no, size_t tag_size) {
+    uint16_t msglen = htons(record.m_contents.size() - tag_size);
+    ustring additional_data;
+    additional_data.append(sequence_no.begin(), sequence_no.end());
+    additional_data.append({record.get_type(), record.get_major_version(), record.get_minor_version()});
+    additional_data.resize(13);
+    std::memcpy(&additional_data[11], &msglen, 2);
+    return additional_data;
+}
+
+tls_record ChaCha20_Poly1305::encrypt(tls_record record) {
+    std::array<uint8_t,8> sequence_no;
+
+    write_int(seqno_server, sequence_no.data(), 8);
+    seqno_server++;
+    
+    ustring additional_data = make_additional(record, sequence_no, 0);
+    
+    std::array<uint8_t, 12> nonce = server_implicit_write_IV;
+    for(int i = 0; i < 8; i ++) {
+        nonce[i+4] ^= sequence_no[i];
+    }
+    
+    auto [ciphertext, tag] = chacha20_aead_crypt(additional_data, server_write_key, nonce, record.m_contents, true);
+    record.m_contents = ciphertext;
+    record.m_contents.append(tag.begin(), tag.end());
+    return record;
+}
+
+
+tls_record ChaCha20_Poly1305::decrypt(tls_record record) {
+
+    std::array<uint8_t, 8> sequence_no {};
+    write_int(seqno_client, sequence_no.data(), 8);
+    seqno_client++;
+
+    ustring additional_data = make_additional(record, sequence_no, 16);
+
+    ustring ciphertext;
+    ciphertext.append(record.m_contents.begin(), record.m_contents.end()-16);
+    
+    std::array<uint8_t, 16> tag;
+    std::copy(record.m_contents.end()-16, record.m_contents.end(), tag.begin());
+    
+    std::array<uint8_t,12> nonce = client_implicit_write_IV;
+    for(int i = 0; i < 8; i++) {
+        nonce[i+4] ^= sequence_no[i];
+    }
+    
+    auto [plaintext, tag_recalc] = chacha20_aead_crypt(additional_data, client_write_key, nonce, ciphertext, false);
+
+    if(tag != tag_recalc) {
+        throw ssl_error("bad MAC", AlertLevel::fatal, AlertDescription::decrypt_error);
+    }
+    record.m_contents = plaintext;
+    return record;
+}
+
+
     
 } // namespace fbw::cha

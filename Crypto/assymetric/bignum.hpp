@@ -41,8 +41,8 @@ using ct_u512 = uVar<512>;
 using ct_u768 = uVar<768>;
 using ct_u1024 = uVar<1024>;
 
-namespace secp256r1{ constexpr ct_u256 REDC(ct_u512 aR) noexcept ; constexpr ct_u256 REDCQ(ct_u512 aR) noexcept ;}
 namespace curve25519{ constexpr ct_u256 REDC(ct_u512 aR) noexcept;}
+
 
 template<int INTBITS >
 class uVar {
@@ -320,9 +320,7 @@ public:
         auto [divi, modi] = divmod(lhs, rhs);
         return modi;
     }
-    friend constexpr ct_u256 secp256r1::REDC(ct_u512) noexcept;
     friend constexpr ct_u256 curve25519::REDC(ct_u512) noexcept;
-    friend constexpr ct_u256 secp256r1::REDCQ(ct_u512) noexcept;
 };
 
 constexpr ct_u256 operator "" _xl(const char* const str, std::size_t siz) {

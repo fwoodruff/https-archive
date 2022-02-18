@@ -193,10 +193,7 @@ void shuffle(std::array<uint8_t, 32>& state) {
 std::string make_eTag(const std::string& file_contents) {
     std::array<uint8_t, 32> state {0};
     for(unsigned i = 0; i < file_contents.size(); i ++) {
-        state[i % 24] ^= file_contents[i];
-        if(i % 23 == 0) {
-            shuffle(state);
-        }
+        state[i % 32] ^= file_contents[i];
     }
     shuffle(state);
     state[2] = 0x22;

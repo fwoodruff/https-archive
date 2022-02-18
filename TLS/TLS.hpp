@@ -83,14 +83,13 @@ class TLS final : public receiver {
     size_t send_byte_idx = 0;
     status_message app_out {};
     
-    status_message generate_packet();
+    status_message generate_packet(int num_records);
     
 public:
     
     
     status_message handle(ustring) noexcept override;
     
-    void test_handshake() && ;
     
 };
 

@@ -26,8 +26,6 @@
 
 
 int main() {
-    //fbw::cha::test();
-    //exit(1);
 
 
     try {
@@ -49,11 +47,10 @@ int main() {
                     throw std::runtime_error("no MIME");
                 }
             }
-        
-        
         fbw::server webserver { };
-        
+
         while(true) {
+            
             webserver.serve_some();
         }
     } catch (const std::system_error& e) {
