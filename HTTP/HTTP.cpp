@@ -71,8 +71,9 @@ status_message HTTP::handle(ustring uinput) noexcept {
         
         std::ostringstream oss;
         oss << "HTTP/1.1 " << error_message << "\r\n"
+        << "Connection: close\r\n"
         << "Content-Type: text/html; charset=UTF-8\r\n"
-        <<"Content-Length: " << error_message.size() << "\r\n"
+        << "Content-Length: " << error_message.size() << "\r\n"
         << "Server: FredPi/0.1 (Unix) (Raspbian/Linux)\r\n"
         << "\r\n"
         << error_message;

@@ -52,7 +52,7 @@ std::string extract(std::string& bytes, std::string delimiter) {
     if (n == std::string::npos) {
         return "";
     }
-    std::string ret = bytes.substr(0, n+delimiter.size()+1);
+    std::string ret = bytes.substr(0, n+delimiter.size());
     bytes = bytes.substr(n+delimiter.size());
     return ret;
 }

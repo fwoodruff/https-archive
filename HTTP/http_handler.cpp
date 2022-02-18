@@ -107,6 +107,8 @@ std::string file_to_http(const std::string& rootdir, std::string filename) {
         << "Expires: " << timestring(time + day) << "\r\n"
         << "Content-Type: " << MIME << (MIME.substr(0,4)=="text" ? "; charset=UTF-8" : "") << "\r\n"
         << "Content-Length: " << file_contents.size() << "\r\n"
+        << "Connection: Keep-Alive\r\n"
+        << "Keep-Alive: timeout=5, max=1000\r\n"
         << "Server: " << make_server_name() << "\r\n"
         << "ETag: " << make_eTag(file_contents) << "\r\n"
         << "\r\n"
