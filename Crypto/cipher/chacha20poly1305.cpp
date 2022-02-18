@@ -10,6 +10,9 @@
 #include "keccak.hpp"
 #include "bignum.hpp"
 
+#include <arpa/inet.h>
+#include <sys/types.h>
+#include <cstring>
 #include <algorithm>
 #include <array>
 
@@ -86,14 +89,14 @@ ustring chacha20_xorcrypt(   const std::array<uint8_t, 32>& key,
     ustring out;
     out.resize(message.size());
     
-    int k = 0;
-    for(int i = 0; i < (message.size()+63) /64; i++) {
-        std::array<uint8_t, 64> ou = chacha20(key, nonce, i+blockid);
-        for(int j = 0;  j < 64 and k < message.size(); j++, k++) {
+    size_t k = 0;
+    for(size_t i = 0; i < (message.size()+63) /64; i++) {
+        std::array<uint8_t, 64> ou = chacha20(key, nonce, uint32_t(i)+blockid);
+        for(size_t j = 0;  j < 64 and k < message.size(); j++, k++) {
             out[k] = ou[j];
         }
     }
-    for(int i = 0; i < message.size(); i++) {
+    for(size_t i = 0; i < message.size(); i++) {
         out[i] ^= message[i];
     }
     return out;
@@ -161,11 +164,11 @@ std::array<uint8_t, 16> poly1305_mac(const ustring& message, const std::array<ui
     
     auto rMonty = REDCpoly(r * poly_RRP);
 
-    for(int i = 0; i < ((message.size()+15)/16)*16; i+=16) {
+    for(size_t i = 0; i < ((message.size()+15)/16)*16; i+=16) {
         std::array<uint8_t,24> inp {0};
         assert(message.size() > i);
         
-        auto siz = std::min(16ul, message.size() - i);
+        auto siz = std::min(static_cast<size_t>(16), message.size() - i);
         
         std::copy_n(&message[i], siz, inp.begin());
         inp[siz] = 1;
