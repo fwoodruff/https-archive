@@ -1,11 +1,9 @@
 //
-//  connect.hpp
-//  piserver
+//  connection.hpp
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 09/07/2021.
 //
-
-
 
 
 #ifndef connection_hpp

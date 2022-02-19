@@ -8,7 +8,7 @@
 #ifndef global_hpp
 #define global_hpp
 
-
+#include <concepts>
 #include <cassert>
 #include <string>
 #include <array>

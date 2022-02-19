@@ -1,5 +1,6 @@
 //
-//  connect.cpp
+//  connection.cpp
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 09/07/2021.
 //

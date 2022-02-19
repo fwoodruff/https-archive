@@ -1,6 +1,6 @@
 //
 //  cppsocket.cpp
-//  piserver
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 13/07/2021.
 //
@@ -197,9 +197,5 @@ std::pair<std::string,std::string> client_socket::cli_socketinfo() {
 
     return {oss.str(), std::string(ipstr)};
 }
-
-
-
-
 
 } // namespace fbw

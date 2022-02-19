@@ -1,6 +1,6 @@
 //
-//  curve25519.hpp
-//  curve25519
+//  secp256r1.hpp
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 08/08/2021.
 //
