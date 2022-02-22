@@ -248,7 +248,7 @@ roundkey KeyExpansion(const aeskey& AESkey) {
     for(ssize_t i = Nka; i < Nb * (Nra+1); i++) {
         byte_word temp {};
         temp = keybytes[i-1];
-        
+        file_assert( Nka != 0, "division by zero");
         if (i % Nka == 0) {
             std::rotate(temp.begin(), &temp[1], temp.end());
             std::transform(temp.cbegin(), temp.cend(), temp.begin(), [](uint8_t c) { return SBOX[c]; });

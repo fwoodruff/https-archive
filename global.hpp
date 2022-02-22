@@ -8,7 +8,6 @@
 #ifndef global_hpp
 #define global_hpp
 
-#include <concepts>
 #include <cassert>
 #include <string>
 #include <array>
@@ -80,14 +79,6 @@ inline void file_assert(bool assertion, const std::string_view& message) {
     }
 }
 
-
-template<typename CALLABLE>
-class raii_guard {
-    CALLABLE dtor;
-public:
-    raii_guard(CALLABLE callable) : dtor(callable) {}
-    ~raii_guard() { dtor(); }
-};
 
 
 #endif /* global_hpp */
