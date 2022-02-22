@@ -183,6 +183,7 @@ std::vector<std::string> get_method(const std::string& header) {
 
 void shuffle(std::array<uint8_t, 32>& state) {
     for(int i = 0; i < 3; i++) {
+        state[4] = ~(state[4] & 0x7a);
         for(int j = 0; j < 32; j++) {
             state[j] += (state[(j+10)%32] << 4) * (state[(j+7)%32] >> 1);
             state[j] ^= state[j] >> 3;
