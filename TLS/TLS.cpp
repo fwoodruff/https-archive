@@ -50,6 +50,7 @@
 #include <algorithm>
 
 
+constexpr size_t TLS_record_size = (1u << 14) - 5;
 
 namespace fbw {
 
@@ -100,6 +101,7 @@ status_message TLS::handle(ustring input) noexcept {
         
         return {str, status::closing };
     } catch(const std::out_of_range& e) {
+        next.reset();
         return {{}, status::closed };
     } catch(...) {
         file_assert(false, "bad exception");
@@ -111,7 +113,7 @@ void TLS::handle_record(tls_record record, status_message& output) {
     if (record.get_major_version() != 3) {
         throw ssl_error("unsupported version", AlertLevel::fatal, AlertDescription::protocol_version);
     }
-    if (record.m_contents.size() > 16384-5) {
+    if (record.m_contents.size() > TLS_record_size) {
         throw ssl_error("oversized record", AlertLevel::fatal, AlertDescription::record_overflow);
     }
     
@@ -547,7 +549,8 @@ status_message TLS::generate_packet(int num_records) {
     status_message output;
     
     for(int i = 0; i < num_records; i++) {
-        size_t record_size = 15923 - (randomgen.randgen64() % 4241);
+        size_t small_record_size = std::clamp(size_t(randomgen.randgen64() % TLS_record_size), size_t(1), TLS_record_size);
+        size_t record_size = (randomgen.randgen64() % 10 != 0) ? TLS_record_size : small_record_size;
         record_size = std::min(record_size, app_out.m_response.size() - send_byte_idx);
         
         tls_record out(ContentType::Application);
@@ -557,10 +560,12 @@ status_message TLS::generate_packet(int num_records) {
         output.m_response.append(out.serialise());
         
         send_byte_idx += record_size;
+        
         if(send_byte_idx == app_out.m_response.size()) {
             more_to_send = false;
             send_byte_idx = 0;
             output.m_status = app_out.m_status;
+            app_out.m_response.clear();
             break;
         } else {
             output.m_status = status::write_only;
@@ -595,6 +600,7 @@ void TLS::tls_notify_close(status_message& output) {
     }
     output.m_response.append(close_record.serialise());
     output.m_status = status::closing;
+    next.reset();
 }
 
 

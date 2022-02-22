@@ -58,9 +58,8 @@ status_message HTTP::handle(ustring uinput) noexcept {
             } else {
                 response = respond(m_folder, std::move(header), std::move(body));
             }
-            header = "";
-            
-            
+            header.clear();
+
             output.m_response = to_unsigned(response);
             output.m_status = status::read_only;
         }
@@ -79,6 +78,7 @@ status_message HTTP::handle(ustring uinput) noexcept {
         << error_message;
         output.m_response = to_unsigned(oss.str());
         output.m_status = status::closing;
+        
     }
     return output;
 }
