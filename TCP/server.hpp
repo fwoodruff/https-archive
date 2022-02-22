@@ -67,9 +67,6 @@ class server {
     void accept_connection(const server_socket& sc, tp, std::function<std::unique_ptr<receiver>()> receiver_stack);
     void handle_event(fpollfd, tp) noexcept;
     
-
-    void sanity(const std::vector<fpollfd> events);
-    
     
     void server_thread_task();
     void do_task(fpollfd event);
@@ -83,8 +80,7 @@ class server {
     size_t threads_to_start = 0;
 
     int events_started = 0;
-    int threads_finished = 0;
-    int threads_reset = 0;
+    size_t threads_finished = 0;
 
     
 public:
