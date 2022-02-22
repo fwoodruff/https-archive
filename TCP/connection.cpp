@@ -159,28 +159,8 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
     } catch(...) {
         file_assert(false, "uncaught exception in handle_connection");
     }
-    
 
     m_time_set = loop_time;
-    
-    
-    
-    bool poll_for_read  = (activity ==  status::read_only) or
-                          (activity == status::write_only and write_buffer.empty());
-    bool poll_for_write = activity != status::closed and (!write_buffer.empty() or
-                          (activity == status::write_only and write_buffer.empty()));
-    // fix me
-    context->mod_fd(m_socket, poll_for_read, poll_for_write);
-    
-    
-    if(activity == status::closed) {
-        file_assert(!poll_for_read, "polling for read on about to be deleted connection");
-        file_assert(!poll_for_write, "polling for write on about to be deleted connection");
-    }
-    
-    if(activity == status::closing) {
-        file_assert(!poll_for_read, "polling for read on closing socket");
-    }
     
     return activity == status::closed;
 }

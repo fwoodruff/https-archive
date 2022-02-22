@@ -1,4 +1,0 @@
-exception
-closing connection
-exception
-closing connection
