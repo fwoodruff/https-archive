@@ -42,12 +42,12 @@ using ct_u768 = uVar<768>;
 using ct_u1024 = uVar<1024>;
 
 namespace curve25519{ constexpr ct_u256 REDC(ct_u512 aR) noexcept;}
+namespace cha { constexpr uVar<192> REDCpoly(uVar<384> aR) noexcept;}
 
 
 template<int INTBITS >
 class uVar {
 public:
-    
 #ifdef __SIZEOF_INT128__
     using radix = uint64_t;
     using radix2 = __uint128_t;
@@ -321,6 +321,7 @@ public:
         return modi;
     }
     friend constexpr ct_u256 curve25519::REDC(ct_u512) noexcept;
+    friend constexpr uVar<192> cha::REDCpoly(uVar<384>) noexcept;
 };
 
 constexpr ct_u256 operator "" _xl(const char* const str, std::size_t siz) {

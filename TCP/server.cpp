@@ -231,6 +231,7 @@ void server::server_thread_task() {
         loop_cv.notify_one();
         
     }
+    pool_cv.notify_one();
 }
 
 
@@ -285,12 +286,14 @@ void server::accept_connection(const server_socket& sock, tp loop_time,
 
 server::~server() {
     
-    
-    std::lock_guard lk(mut);
+    {
+        std::lock_guard lk(mut);
+        done = true;
+    }
+    pool_cv.notify_one();
     for(auto& th : thread_vec) {
         th.join();
     }
-    done = true;
     logger << "~server()" << std::endl;
 }
 

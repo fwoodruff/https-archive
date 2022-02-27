@@ -118,17 +118,36 @@ constexpr u192 prime130_5 ("0x3fffffffffffffffffffffffffffffffb");
 constexpr u192 magic_poly("0xa3d70a3d70a3d70cccccccccccccccccccccccccccccccd");
 constexpr u192 poly_RRP ("0x190000000000000000000000000000000");
 
-constexpr u192 REDCpoly(u384 T) noexcept {
-    u192 m = u192(u192(T) * magic_poly);
-    u384 t = (T + (m * prime130_5))>>192;
-    u192 pri = prime130_5;
-    const auto prime = u384(pri);
-    if(t >= prime) {
-        return u192(t - prime);
+// program bottlenecks here so using the intrusive REDC form
+constexpr u192 REDCpoly(u384 aR) noexcept {
+    using radix = u192::radix;
+    using radix2 = u192::radix2;
+    u192 a;
+    for(size_t i = 0; i < a.v.size(); i++) {
+        radix2 carry = 0;
+        radix2 congruent_multiplier = static_cast<radix>(aR.v[i]*magic_poly.v[0]);
+        
+        for(size_t j = 0; j < a.v.size(); j++) {
+            radix2 x = static_cast<radix2>(aR.v[i+j]) + congruent_multiplier * static_cast<radix2>(prime130_5.v[j]) + carry;
+            aR.v[i+j] = static_cast<radix>(x);
+            carry = x >> ct_u256::RADIXBITS;
+        }
+        for(size_t j = a.v.size(); j < aR.v.size() - i; j++){
+            radix2 x = static_cast<radix2>(aR.v[i+j]) + carry;
+            aR.v[i+j] = static_cast<radix>(x);
+            carry = x >> ct_u256::RADIXBITS;
+        }
+    }
+    for(size_t i = 0; i < prime130_5.v.size(); i++) {
+        a.v[i] = aR.v[i + prime130_5.v.size()];
+    }
+    if(a > prime130_5) {
+        return a - prime130_5;
     } else {
-        return u192(t);
+        return a;
     }
 }
+
 
 u192 add_mod(u192 x, u192 y , u192 mod) noexcept {
     auto sum = x + y;
