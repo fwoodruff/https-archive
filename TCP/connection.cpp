@@ -36,7 +36,10 @@ connection::connection(time_point<steady_clock> tp, std::unique_ptr<receiver> rc
     context(ctx),
     m_socket(std::move(socket)),
     primary_receiver (std::move(rcv)),
-    activity(status::read_only) {
+    activity(status::read_only),
+    old_read(true),
+    old_write(false)
+{
 
 }
 

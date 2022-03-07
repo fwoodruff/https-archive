@@ -52,6 +52,8 @@ private:
     client_socket m_socket;
     std::unique_ptr<receiver> primary_receiver;
     status activity;
+    bool old_read;
+    bool old_write;
     
     friend class server;
 

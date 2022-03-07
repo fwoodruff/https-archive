@@ -167,8 +167,13 @@ void server::do_task(fpollfd event) {
                                       (arg->activity == status::write_only and arg->write_buffer.empty());
                 bool poll_for_write = arg->activity != status::closed and (!arg->write_buffer.empty() or
                                       (arg->activity == status::write_only));
-                std::lock_guard lk(mut);
-                m_poller.mod_fd(arg->m_socket, poll_for_read, poll_for_write);
+                if(arg->old_read != poll_for_read or arg->old_write != poll_for_write)
+                {
+                    std::lock_guard lk(mut);
+                    m_poller.mod_fd(arg->m_socket, poll_for_read, poll_for_write);
+                }
+                arg->old_read = poll_for_read;
+                arg->old_write = poll_for_write;
             }
         },
         [&](static_fd arg) {
