@@ -72,9 +72,9 @@ status_message TLS::handle(ustring input) noexcept {
         output =  generate_packet(1); // around 10kb per batch
         return output;
     }
+    file_assert(input.size() != 0, "reading empty string");
     
-    
-    output.m_status = status::read_only;
+    output.m_status = status::read_write;
     
     try {
         while(true) {
@@ -568,7 +568,7 @@ status_message TLS::generate_packet(int num_records) {
             app_out.m_response.clear();
             break;
         } else {
-            output.m_status = status::write_only;
+            output.m_status = status::flush;
         }
     }
     return output;

@@ -115,12 +115,11 @@ server::server() {
     m_poller.add_fd(m_redirect_socket, static_fd::http_acceptor, true, false);
     
 
-    unsigned int nthreads = std::thread::hardware_concurrency();
+    unsigned nthreads = std::thread::hardware_concurrency();
     nthreads = std::clamp(nthreads, 1u, static_cast<unsigned int> (MAX_SOCKETS));
-    for(int i = 0; i < nthreads - 1; i++) {
+    for(unsigned i = 0; i < nthreads - 1; i++) {
         thread_vec.emplace_back(&server::server_thread_task, this);
     }
-    thj.thds = &thread_vec;
     
 
     // interthread/intersocket, need a way for server to initiate message.
@@ -157,16 +156,17 @@ void server::do_task(fpollfd event) {
     std::visit(overloaded {
         [&](node_ptr arg) {
             file_assert(arg != connections.end(), "fd = end");
-            bool kill_me = arg->handle_connection(event, loop_time);
-
-            if(kill_me) {
+            arg->handle_connection(event, loop_time);
+            
+            logger << "event type: connection\n";
+            
+            if(arg->activity ==  status::closed) {
                 std::lock_guard lk(mut);
                 connections.erase(arg);
             } else {
-                bool poll_for_read  = (arg->activity ==  status::read_only) or
-                                      (arg->activity == status::write_only and arg->write_buffer.empty());
+                bool poll_for_read  = (arg->activity ==  status::read_write);
                 bool poll_for_write = arg->activity != status::closed and (!arg->write_buffer.empty() or
-                                      (arg->activity == status::write_only));
+                                      (arg->activity == status::flush));
                 if(arg->old_read != poll_for_read or arg->old_write != poll_for_write)
                 {
                     std::lock_guard lk(mut);
@@ -178,6 +178,7 @@ void server::do_task(fpollfd event) {
         },
         [&](static_fd arg) {
             try {
+                logger << "event type: acceptor\n";
                 switch (arg) {
                     case static_fd::https_acceptor:
                         accept_connection(m_https_socket,
@@ -206,7 +207,7 @@ void server::do_task(fpollfd event) {
 }
 
 bool server::get_task() {
-    int idx;
+    unsigned idx;
     {
         std::lock_guard lk(mut);
         idx = events_started;
@@ -240,11 +241,19 @@ void server::server_thread_task() {
 }
 
 
+static int loop_index = 0;
+
 void server::serve_some() {
+    loop_index++;
+    logger << "loop count: " << loop_index << std::endl;
+    
     bool can_accept = connections.size() < static_cast<size_t>(MAX_SOCKETS - 11);
     m_poller.mod_fd(m_https_socket, can_accept, false);
+    m_poller.mod_fd(m_redirect_socket, can_accept, false);
     loop_time = steady_clock::now();
+    logger << "num connections: " << connections.size() << std::endl;
     loop_events = m_poller.get_events(!connections.empty());
+    logger << "num connections polled: " << loop_events.size() << std::endl;
     
     events_started = 0;
     threads_finished = 0;

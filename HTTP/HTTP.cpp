@@ -47,7 +47,7 @@ status_message HTTP::handle(ustring uinput) noexcept {
             } else if(size != 0) {
                 body += extract(input, size);
                 if(body.size() == 0) {
-                    return {to_unsigned(""), status::read_only};
+                    return {to_unsigned(""), status::read_write};
                 }
             }
             
@@ -61,7 +61,7 @@ status_message HTTP::handle(ustring uinput) noexcept {
             header.clear();
 
             output.m_response = to_unsigned(response);
-            output.m_status = status::read_only;
+            output.m_status = status::read_write;
         }
     } catch(const http_error& e) {
         header = "";

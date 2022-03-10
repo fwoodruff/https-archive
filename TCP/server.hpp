@@ -30,16 +30,6 @@
 
 namespace fbw {
 
-class join_threads {
-public:
-    std::vector<std::thread>* thds;
-    
-    ~join_threads() {
-        for(auto& th : *thds) {
-            th.join();
-        }
-    }
-};
 
 
 
@@ -75,7 +65,6 @@ class server {
     std::mutex mut;
     std::condition_variable pool_cv;
     std::condition_variable loop_cv;
-    join_threads thj;
     bool done = false;
     size_t threads_to_start = 0;
 

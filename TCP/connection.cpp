@@ -36,7 +36,7 @@ connection::connection(time_point<steady_clock> tp, std::unique_ptr<receiver> rc
     context(ctx),
     m_socket(std::move(socket)),
     primary_receiver (std::move(rcv)),
-    activity(status::read_only),
+    activity(status::read_write),
     old_read(true),
     old_write(false)
 {
@@ -66,8 +66,8 @@ connection::~connection() {
 
 void connection::send_bytes_over_network() {
     switch(activity) {
-        case status::read_only:
-        case status::write_only:
+        case status::read_write:
+        case status::flush:
         //case status::dormant:
         case status::closing:
             break;
@@ -76,14 +76,19 @@ void connection::send_bytes_over_network() {
             return;
     }
 
-    // Note to future self:
-    // Interplay between setsockopt(TCP_NO_DELAY) and send(MSG_MORE) flags
-    // would be plausible optimisations for speeding up handshakes.
-    // This would require distinguising between handshake packets and application packets
+    if(write_buffer.empty()) {
+        logger << "sending empty buffer\n";
+    }
+
     
-    // MSG_NOSIGNAL: clients disconnecting should not crash the program!
+
+    
     auto bytes = m_socket.send(write_buffer.data(), write_buffer.size(), MSG_NOSIGNAL);
     file_assert(bytes <= write_buffer.size(), "bytes <= write_buffer.size()");
+    if(bytes == 0) {
+        logger << "sent no bytes\n" << std::flush;
+    }
+    
     if(bytes == write_buffer.size()) {
         write_buffer.clear();
     } else {
@@ -118,12 +123,18 @@ ssize_t connection::queue_bytes_for_write(ustring bytes) {
 }
 
 bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanoseconds> loop_time) {
+    // nothing useful has happened if:
+    // no data sent
+    // no data received
+    //
+    
     try {
         file_assert(primary_receiver != nullptr, "bad primary receiver");
         switch(activity) {
-            case status::read_only:
-                
+            case status::read_write:
+                logger << "read write\n";
             //case status::dormant:
+                file_assert(event.read or event.write, "shouldn't be polled if nothing to read or write");
                 if(event.read) {
                     ustring out = receive_bytes_from_network();
                     auto st_msg = primary_receiver->handle(std::move(out));
@@ -134,8 +145,11 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                     send_bytes_over_network();
                 }
                 break;
-            case status::write_only:
+            case status::flush:
             {
+                file_assert(!event.read, "cannot read while flushing buffer");
+                file_assert(event.write, "writing to unwriteable socket");
+                logger << "flush\n";
                 auto st_msg = primary_receiver->handle({});
                 activity = st_msg.m_status;
                 write_buffer.append(st_msg.m_response);
@@ -145,11 +159,10 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
             
             case status::closing:
                 file_assert(!event.read, "closing socket polled for read");
+                file_assert(event.write, "writing to unwriteable");
+                send_bytes_over_network();
                 
-                if(event.write) {
-                    send_bytes_over_network();
-                    
-                }
+                
                 break;
             case status::closed:
                 file_assert(false, "closed socket polled");
