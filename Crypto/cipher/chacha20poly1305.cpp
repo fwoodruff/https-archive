@@ -255,14 +255,14 @@ chacha20_aead_crypt(ustring aad, std::array<uint8_t, 32> key, std::array<uint8_t
 void ChaCha20_Poly1305::set_key_material(ustring material) {
     
     auto it = material.begin();
-    std::copy_n(it, client_write_key.size(), client_write_key.begin());
-    it += client_write_key.size();
-    std::copy_n(it, server_write_key.size(), server_write_key.begin());
-    it += server_write_key.size();
-    std::copy_n(it, client_implicit_write_IV.size(), client_implicit_write_IV.begin());
-    it += client_implicit_write_IV.size();
-    std::copy_n(it, server_implicit_write_IV.size(), server_implicit_write_IV.begin());
-    it += server_implicit_write_IV.size();
+    std::copy_n(it, m_client_write_key.size(), m_client_write_key.begin());
+    it += m_client_write_key.size();
+    std::copy_n(it, m_server_write_key.size(), m_server_write_key.begin());
+    it += m_server_write_key.size();
+    std::copy_n(it, m_client_implicit_write_IV.size(), m_client_implicit_write_IV.begin());
+    it += m_client_implicit_write_IV.size();
+    std::copy_n(it, m_server_implicit_write_IV.size(), m_server_implicit_write_IV.begin());
+    it += m_server_implicit_write_IV.size();
 }
 
 ustring make_additional(tls_record& record, std::array<uint8_t,8>& sequence_no, size_t tag_size) {
@@ -278,17 +278,17 @@ ustring make_additional(tls_record& record, std::array<uint8_t,8>& sequence_no, 
 tls_record ChaCha20_Poly1305::encrypt(tls_record record) {
     std::array<uint8_t,8> sequence_no;
 
-    write_int(seqno_server, sequence_no.data(), 8);
-    seqno_server++;
+    write_int(m_seqno_server, sequence_no.data(), 8);
+    m_seqno_server++;
     
     ustring additional_data = make_additional(record, sequence_no, 0);
     
-    std::array<uint8_t, 12> nonce = server_implicit_write_IV;
+    std::array<uint8_t, 12> nonce = m_server_implicit_write_IV;
     for(int i = 0; i < 8; i ++) {
         nonce[i+4] ^= sequence_no[i];
     }
     
-    auto [ciphertext, tag] = chacha20_aead_crypt(additional_data, server_write_key, nonce, record.m_contents, true);
+    auto [ciphertext, tag] = chacha20_aead_crypt(additional_data, m_server_write_key, nonce, record.m_contents, true);
     record.m_contents = ciphertext;
     record.m_contents.append(tag.begin(), tag.end());
     return record;
@@ -298,8 +298,8 @@ tls_record ChaCha20_Poly1305::encrypt(tls_record record) {
 tls_record ChaCha20_Poly1305::decrypt(tls_record record) {
 
     std::array<uint8_t, 8> sequence_no {};
-    write_int(seqno_client, sequence_no.data(), 8);
-    seqno_client++;
+    write_int(m_seqno_client, sequence_no.data(), 8);
+    m_seqno_client++;
 
     ustring additional_data = make_additional(record, sequence_no, 16);
 
@@ -309,12 +309,12 @@ tls_record ChaCha20_Poly1305::decrypt(tls_record record) {
     std::array<uint8_t, 16> tag;
     std::copy(record.m_contents.end()-16, record.m_contents.end(), tag.begin());
     
-    std::array<uint8_t,12> nonce = client_implicit_write_IV;
+    std::array<uint8_t,12> nonce = m_client_implicit_write_IV;
     for(int i = 0; i < 8; i++) {
         nonce[i+4] ^= sequence_no[i];
     }
     
-    auto [plaintext, tag_recalc] = chacha20_aead_crypt(additional_data, client_write_key, nonce, ciphertext, false);
+    auto [plaintext, tag_recalc] = chacha20_aead_crypt(additional_data, m_client_write_key, nonce, ciphertext, false);
 
     if(tag != tag_recalc) {
         throw ssl_error("bad MAC", AlertLevel::fatal, AlertDescription::decrypt_error);

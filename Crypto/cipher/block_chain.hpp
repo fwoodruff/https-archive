@@ -19,13 +19,13 @@ namespace fbw::aes {
 
 class AES_CBC_SHA : public cipher_base {
 private:
-    roundkey server_write_round_keys;
-    roundkey client_write_round_keys;
-    std::array<uint8_t, 20> server_MAC_key;
-    std::array<uint8_t, 20> client_MAC_key;
+    roundkey m_server_write_round_keys;
+    roundkey m_client_write_round_keys;
+    std::array<uint8_t, 20> m_server_MAC_key;
+    std::array<uint8_t, 20> m_client_MAC_key;
 
     size_t m_key_size;
-    uint64_t seqno_server;
+    uint64_t m_seqno_server;
     uint64_t seqno_client;
     
 public:

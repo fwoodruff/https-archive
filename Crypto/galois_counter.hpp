@@ -20,16 +20,16 @@ namespace fbw::aes {
 
 class AES_128_GCM_SHA256 : public cipher_base {
     
-    roundkey client_write_round_keys;
-    roundkey server_write_round_keys;
+    roundkey m_client_write_round_keys;
+    roundkey m_server_write_round_keys;
     
     
     
-    ustring client_implicit_write_IV;
-    ustring server_implicit_write_IV;
+    ustring m_client_implicit_write_IV;
+    ustring m_server_implicit_write_IV;
     
-    uint64_t seqno_server = 0;
-    uint64_t seqno_client = 0;
+    uint64_t m_seqno_server = 0;
+    uint64_t m_seqno_client = 0;
     
 public:
     AES_128_GCM_SHA256() = default;

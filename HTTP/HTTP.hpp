@@ -20,8 +20,7 @@ namespace fbw {
 class HTTP final : public receiver {
     static constexpr long max_bytes_queued = 1000000;
     
-    std::string input;
-    std::string header;
+    std::string m_header;
 
     std::string m_folder;
     bool m_redirect;

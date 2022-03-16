@@ -21,29 +21,26 @@ namespace fbw {
 
 class TLS final : public receiver {
     
-    ustring m_input {};
-    std::array<uint8_t,32> m_client_random {};
-    std::array<uint8_t,32> m_server_random {};
-    // session ID
-    unsigned short cipher {};
+    ustring m_input;
+    std::array<uint8_t,32> m_client_random;
+    std::array<uint8_t,32> m_server_random;
+    unsigned short cipher;
     
+    bool m_is_client_hello_done;
+    bool m_is_client_key_exchange_done;
+    bool m_is_change_cipher_spec_done;
+    bool m_is_client_handshake_finished_done;
     
-    bool is_client_hello_done = false;
-    bool is_client_key_exchange_done = false;
-    bool is_change_cipher_spec_done = false;
-    bool is_client_handshake_finished_done = false;
+    std::array<uint8_t,32> m_client_public_key;
+    std::array<uint8_t,32> m_server_private_key_ephem;
+    std::unique_ptr<hash_base> m_handshake_hasher;
+    std::array<uint8_t,48> m_master_secret;
+    std::unique_ptr<cipher_base> m_cipher_context;
+    std::unique_ptr<const hash_base> m_hasher_factory;
     
-    std::array<uint8_t,32> client_public_key {};
-    std::array<uint8_t,32> server_private_key_ephem {};
-    
-    std::unique_ptr<hash_base> handshake_hasher = nullptr;;
-    
-    std::array<uint8_t,48> master_secret {};
-
-    
-    std::unique_ptr<cipher_base> cipher_context = nullptr;
-    
-    std::unique_ptr<const hash_base> hasher_factory = nullptr;
+    bool m_more_to_send;
+    size_t m_send_byte_idx;
+    status_message m_app_out;
     
     
     void handle_record(tls_record record, status_message& output);
@@ -71,7 +68,6 @@ class TLS final : public receiver {
     
     void client_application_data(const ustring& data, status_message& output);
 
-    void tls_notify_close(status_message& output); // keep this?
     
     [[nodiscard]] static std::array<uint8_t,48> make_master_secret(const std::unique_ptr<const hash_base>& hasher,
                                                             std::array<uint8_t,32> server_private,
@@ -79,17 +75,12 @@ class TLS final : public receiver {
                                               std::array<uint8_t,32> server_random,
                                               std::array<uint8_t,32> client_random);
     
-    bool more_to_send = false;
-    size_t send_byte_idx = 0;
-    status_message app_out {};
-    
     status_message generate_packet(int num_records);
     
 public:
-    
+    // no constructor because everything is correctly initialised
     
     status_message handle(ustring) noexcept override;
-    
     
 };
 

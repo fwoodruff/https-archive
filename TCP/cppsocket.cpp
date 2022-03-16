@@ -152,7 +152,7 @@ int cppsocket::fcntl(int cmd...) const {
 }
 
 std::string server_socket::serv_socketinfo() {
-    return name;
+    return m_name;
 }
 
 std::pair<std::string,std::string> client_socket::cli_socketinfo() {

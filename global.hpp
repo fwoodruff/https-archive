@@ -15,6 +15,7 @@
 #include <fstream>
 
 
+
 extern std::fstream logger;
 
 namespace fbw {
@@ -71,6 +72,9 @@ inline void write_int(uint64_t x, uint8_t* const s, short n) noexcept {
 } // namespace fbw
 
 
+
+
+
 inline void file_assert(bool assertion, const std::string_view& message) {
     if(!assertion) {
         logger << message << std::endl;
@@ -79,6 +83,12 @@ inline void file_assert(bool assertion, const std::string_view& message) {
     }
 }
 
-
+/*
+#ifdef DEBUG
+#define file_assert(assertion, message) (file_assert_impl(assertion, message))
+#else
+#define file_assert(assertion, message) ((void)0)
+#endif
+*/
 
 #endif /* global_hpp */

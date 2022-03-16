@@ -18,12 +18,12 @@
 
 namespace fbw::aes {
 
-AES_CBC_SHA::AES_CBC_SHA(size_t key_size) : server_write_round_keys({}),
-                                            client_write_round_keys({}),
-                                            server_MAC_key({}),
-                                            client_MAC_key({}),
+AES_CBC_SHA::AES_CBC_SHA(size_t key_size) : m_server_write_round_keys({}),
+                                            m_client_write_round_keys({}),
+                                            m_server_MAC_key({}),
+                                            m_client_MAC_key({}),
                                             m_key_size(key_size),
-                                            seqno_server(0),
+                                            m_seqno_server(0),
                                             seqno_client(0) { }
 
 
@@ -35,17 +35,17 @@ void AES_CBC_SHA::set_key_material(ustring expanded_master)  {
     
     auto it = expanded_master.begin();
 
-    std::copy_n(it, client_MAC_key.size(), client_MAC_key.begin());
-    it += client_MAC_key.size();
-    std::copy_n(it, server_MAC_key.size(), server_MAC_key.begin());
-    it += server_MAC_key.size();
+    std::copy_n(it, m_client_MAC_key.size(), m_client_MAC_key.begin());
+    it += m_client_MAC_key.size();
+    std::copy_n(it, m_server_MAC_key.size(), m_server_MAC_key.begin());
+    it += m_server_MAC_key.size();
     std::copy_n(it, client_write_key.size(), client_write_key.begin());
     it += client_write_key.size();
     std::copy_n(it, server_write_key.size(), server_write_key.begin());
     it += server_write_key.size();
     
-    client_write_round_keys = aes_key_schedule(client_write_key);
-    server_write_round_keys = aes_key_schedule(server_write_key);
+    m_client_write_round_keys = aes_key_schedule(client_write_key);
+    m_server_write_round_keys = aes_key_schedule(server_write_key);
 }
 
 
@@ -75,11 +75,11 @@ ustring pad_message(ustring message) {
 
 tls_record AES_CBC_SHA::encrypt(tls_record record) {
 
-    auto ctx = hmac(std::make_unique<sha1>(), server_MAC_key );
+    auto ctx = hmac(std::make_unique<sha1>(), m_server_MAC_key );
 
     std::array<uint8_t,13> sequence {};
-    write_int(seqno_server, &sequence[0], 8);
-    seqno_server++;
+    write_int(m_seqno_server, &sequence[0], 8);
+    m_seqno_server++;
     sequence[8] = record.get_type();
     sequence[9] = record.get_major_version();
     sequence[10] = record.get_minor_version();
@@ -100,7 +100,7 @@ tls_record AES_CBC_SHA::encrypt(tls_record record) {
     auto in_block = record_IV;
     for(size_t i = 0; i < record.m_contents.size(); i += 16) {
         std::transform(in_block.cbegin(), in_block.cend(), &record.m_contents[i], in_block.begin(), std::bit_xor<uint8_t>());
-        auto out_block = aes_encrypt(in_block, server_write_round_keys);
+        auto out_block = aes_encrypt(in_block, m_server_write_round_keys);
         out.append(out_block.cbegin(),out_block.cend());
         in_block = out_block;
     }
@@ -132,7 +132,7 @@ tls_record AES_CBC_SHA::decrypt(tls_record record) {
         std::array<uint8_t,blocksize> in_block {};
         std::copy(&record.m_contents[i], &record.m_contents[i+blocksize], in_block.begin());
 
-        auto plainxor = aes_decrypt(in_block, client_write_round_keys);
+        auto plainxor = aes_decrypt(in_block, m_client_write_round_keys);
 
         std::transform(plainxor.cbegin(), plainxor.cend(), xor_block.cbegin(), plainxor.begin(), std::bit_xor<uint8_t>());
         xor_block = in_block;
@@ -140,13 +140,18 @@ tls_record AES_CBC_SHA::decrypt(tls_record record) {
         plaintext.append(plainxor.cbegin(),plainxor.cend());
     }
     int siz = plaintext[plaintext.size()-1];
-    if(siz+1+client_MAC_key.size() > plaintext.size()) {
+    if(siz+1+m_client_MAC_key.size() > plaintext.size()) {
         throw ssl_error("bad client padding length", AlertLevel::fatal, AlertDescription::decrypt_error);
     }
+    
+    bool bad_pad = false;
     for(int i = 0; i < siz+1; i++) {
-        if(plaintext[plaintext.size()-1-i] != siz) {
-            throw ssl_error("bad client padding", AlertLevel::fatal, AlertDescription::decrypt_error);
-        }
+        // if this short-circuited and just threw an ssl_error immediately
+        // an attacker could time the response from the server to perform
+        // a padding oracle attack.
+        // This is an imperfect workaround which is why Google Chrome does
+        // not support this cipher. Firefox does support this cipher (12/03/2022).
+        bad_pad = (plaintext[plaintext.size()-1-i] != siz) or bad_pad;
     }
 
     plaintext.resize(plaintext.size()-siz-1);
@@ -156,7 +161,7 @@ tls_record AES_CBC_SHA::decrypt(tls_record record) {
     std::copy(plaintext.crbegin(), plaintext.crbegin() + 20, mac_calc.rbegin());
     plaintext.resize(plaintext.size() - mac_calc.size());
 
-    auto ctx = hmac(std::make_unique<sha1>(), client_MAC_key);
+    auto ctx = hmac(std::make_unique<sha1>(), m_client_MAC_key);
     std::array<uint8_t,13> mac_hash_header {};
     write_int(seqno_client, &mac_hash_header[0], 8);
     mac_hash_header[8] = record.get_type();
@@ -170,8 +175,8 @@ tls_record AES_CBC_SHA::decrypt(tls_record record) {
     ctx.update(plaintext);
     auto machash = std::move(ctx).hash();
     
-    if(!std::equal(mac_calc.cbegin(), mac_calc.cend(), machash.cbegin())) {
-        throw ssl_error("bad client MAC", AlertLevel::fatal, AlertDescription::bad_record_mac);
+    if(!std::equal(mac_calc.cbegin(), mac_calc.cend(), machash.cbegin()) or bad_pad) {
+        throw ssl_error("bad client MAC or bad pad", AlertLevel::fatal, AlertDescription::bad_record_mac);
     }
     record.m_contents = std::move(plaintext);
     return record;

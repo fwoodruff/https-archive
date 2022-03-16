@@ -32,12 +32,12 @@ status_message HTTP::handle(ustring uinput) noexcept {
         if(input.size() > max_bytes_queued) {
             throw http_error("414 URI Too Long");
         }
-        if(header.empty()) {
-            header = extract(input, "\r\n\r\n");
+        if(m_header.empty()) {
+            m_header = extract(input, "\r\n\r\n");
         }
         
-        if(!header.empty()) {
-            const auto [delimiter, size] = body_size(header);
+        if(!m_header.empty()) {
+            const auto [delimiter, size] = body_size(m_header);
             file_assert(delimiter == "" or size == 0, "no delimiter or size == 0");
             std::string body;
             if(delimiter != "") {
@@ -54,17 +54,17 @@ status_message HTTP::handle(ustring uinput) noexcept {
             std::string response;
             
             if(m_redirect) {
-                response = redirect(std::move(header), domain_name);
+                response = redirect(std::move(m_header), domain_name);
             } else {
-                response = respond(m_folder, std::move(header), std::move(body));
+                response = respond(m_folder, std::move(m_header), std::move(body));
             }
-            header.clear();
+            m_header.clear();
 
             output.m_response = to_unsigned(response);
             output.m_status = status::read_write;
         }
     } catch(const http_error& e) {
-        header = "";
+        m_header = "";
         
         auto error_message = std::string(e.what());
         

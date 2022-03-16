@@ -24,7 +24,7 @@ class connection;
 class server_socket;
 
 enum class static_fd {
-    https_acceptor, // pipe also
+    https_acceptor,
     http_acceptor // pipe also
 };
 
@@ -35,9 +35,9 @@ using event_var = std::variant<node_ptr, static_fd>;
 
 
 struct fpollfd {
-    event_var node;
-    bool read;
-    bool write;
+    event_var m_node;
+    bool m_read;
+    bool m_write;
 };
 
 using fd_t = int;
@@ -89,7 +89,7 @@ public:
 
 class server_socket final : public cppsocket {
 public:
-    std::string name;
+    std::string m_name;
     server_socket() : cppsocket() {}
     server_socket(int fd) : cppsocket(fd) {}
     server_socket(int domain, int type, int protocol) : cppsocket(domain, type, protocol) {}

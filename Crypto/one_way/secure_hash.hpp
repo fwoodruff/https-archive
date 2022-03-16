@@ -30,10 +30,10 @@ public:
     ustring hash() && override;
     [[nodiscard]] size_t get_block_size() const noexcept override;
 private:
-    size_t datalen;
-    uint64_t bitlen;
-    std::array<uint8_t,block_size> data;
-    std::array<uint32_t,8> state;
+    size_t m_datalen;
+    uint64_t m_bitlen;
+    std::array<uint8_t,block_size> m_data;
+    std::array<uint32_t,8> m_state;
     bool done;
     
 };
@@ -50,10 +50,10 @@ public:
     [[nodiscard]] size_t get_block_size() const noexcept override;
 
 private:
-    size_t datalen = 0;
+    size_t m_datalen = 0;
     std::array<uint32_t,5> m_state;
     std::array<uint8_t,block_size> m_data;
-    bool done;
+    [[maybe_unused]] bool m_done;
     
 };
 
@@ -61,7 +61,7 @@ private:
 class hmac : public hash_base {
     std::unique_ptr<const hash_base> m_factory;
     std::unique_ptr<hash_base> m_hasher;
-    std::vector<uint8_t> KeyPrime;
+    std::vector<uint8_t> m_key_prime;
     
 
     hmac(std::unique_ptr<hash_base> hasher, const uint8_t* key, size_t key_len);

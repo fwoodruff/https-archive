@@ -17,13 +17,13 @@
 namespace fbw {
 
 class keccak_sponge {
-    size_t capacity;
-    size_t rate;
-    std::array<uint8_t,200> state;
-    size_t rate_in_bytes;
-    size_t block_size;
-    size_t idx;
-    bool absorb_phase = true;
+    size_t m_capacity;
+    size_t m_rate;
+    std::array<uint8_t,200> m_state;
+    size_t m_rate_in_bytes;
+    size_t m_block_size;
+    size_t m_idx;
+    bool m_absorb_phase = true;
 public:
     keccak_sponge(size_t capacity = 256) noexcept;
     // code duplication is better than undefined behaviour

@@ -46,14 +46,14 @@ class poll_context;
  */
 class connection {
 private:
-    ustring write_buffer;
+    ustring m_write_buffer;
     time_point<steady_clock> m_time_set;
-    poll_context* context;
+    poll_context* m_poll_context;
     client_socket m_socket;
-    std::unique_ptr<receiver> primary_receiver;
-    status activity;
-    bool old_read;
-    bool old_write;
+    std::unique_ptr<receiver> m_primary_receiver;
+    status m_activity;
+    bool m_old_read;
+    bool m_old_write;
     
     friend class server;
 
