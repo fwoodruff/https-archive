@@ -81,8 +81,8 @@ server_socket get_listener_socket(std::string service) {
 
             listener = server_socket(p->ai_family, p->ai_socktype, p->ai_protocol);
             
-            int yes = 1;
-            listener.setsockopt(SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
+            int yes;
+            listener.setsockopt(SOL_SOCKET, SO_REUSEADDR, &(yes=1), sizeof(int));
             listener.bind(p->ai_addr, p->ai_addrlen);
         } catch (const std::system_error& e ) {
             continue;
@@ -97,11 +97,6 @@ server_socket get_listener_socket(std::string service) {
     listener.fcntl(F_SETFL, O_NONBLOCK);
     return listener;
 }
-
-
-
-
-
 /*
  constructs a server.
  The ctor argument is the data stream handler
@@ -113,6 +108,7 @@ server::server() {
     
     m_poller.add_fd(m_https_socket, static_fd::https_acceptor, true, false);
     m_poller.add_fd(m_redirect_socket, static_fd::http_acceptor, true, false);
+<<<<<<< HEAD
     can_accept_old = true;
 
     //unsigned nthreads = std::thread::hardware_concurrency();
@@ -123,6 +119,9 @@ server::server() {
     
     
     
+=======
+
+>>>>>>> parent of 02818c2 (threadpooled the connection handling event loop)
 
     // interthread/intersocket, need a way for server to initiate message.
     // server-wide pipe
@@ -154,6 +153,7 @@ server::server() {
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
+<<<<<<< HEAD
 void server::do_task(fpollfd event) {
     std::visit(overloaded {
         [&](node_ptr arg) {
@@ -272,11 +272,14 @@ void server::server_thread_task() {
     }
     //m_pool_cv.notify_one();
 }
+=======
+>>>>>>> parent of 02818c2 (threadpooled the connection handling event loop)
 
 
 static int loop_index = 0;
 
 void server::serve_some() {
+<<<<<<< HEAD
     loop_index++;
     logger << "loop count: " << loop_index << std::endl;
     
@@ -302,14 +305,60 @@ void server::serve_some() {
         //threads_to_start = m_threads.size();
     }
     //m_pool_cv.notify_one();
+=======
+    const auto loop_time = steady_clock::now();
+    bool can_accept = connections.size() < static_cast<size_t>(MAX_SOCKETS - 11);
+    m_poller.mod_fd(m_https_socket, can_accept, false);
+
+    const auto events = m_poller.get_events(!connections.empty());
+>>>>>>> parent of 02818c2 (threadpooled the connection handling event loop)
     
-    while(get_task()) {}
+    //sanity(events);
     
+<<<<<<< HEAD
     {
         //std::unique_lock<std::mutex> lk(m_mut);
         //m_loop_cv.wait(lk, [&]{ return m_threads_finished == m_threads.size()+1;});
     }
+=======
+    for (const auto& event : events) {
+        std::visit(overloaded {
+            [&](node_ptr arg) {
+                file_assert(arg != connections.end(), "fd = end");
+                if(arg->handle_connection(event, loop_time)) {
+                    connections.erase(arg);
+                }
+            },
+            [&](static_fd arg) {
+                try {
+                    switch (arg) {
+                        case static_fd::https_acceptor:
+                            accept_connection(m_https_socket,
+                                              loop_time,
+                                            [] {
+                                auto x = std::make_unique<fbw::TLS>();
+                                x->next = std::make_unique<fbw::HTTP>(fbw::rootdir, false);
+                                return x;
+                            });
+                            break;
+                        case static_fd::http_acceptor:
+                            accept_connection(m_redirect_socket,
+                                              loop_time,
+                                        [] {
+                                return std::make_unique<fbw::HTTP>(fbw::rootdir, true);
+                            });
+                            break;
+                        default:
+                            break;
+                    }
+                } catch(const std::runtime_error& e) {
+                    logger << e.what() << std::endl;
+                }
+            }
+        }, event.node);
+>>>>>>> parent of 02818c2 (threadpooled the connection handling event loop)
 
+    }
     
     const auto sentinel_stale = find_if_not(m_connections.crbegin(), m_connections.crend(),
                                    [&](const auto& elem){
@@ -330,14 +379,28 @@ void server::accept_connection(const server_socket& sock, tp loop_time,
     auto skt = sock.accept((sockaddr *) &cli_addr, &sin_len);
     skt.fcntl(F_SETFL, O_NONBLOCK);
 
+<<<<<<< HEAD
     //std::lock_guard lk(m_mut);
     m_connections.emplace_front(loop_time, receiver_stack(), &m_poller, std::move(skt));
     m_poller.add_fd(m_connections.front().m_socket, m_connections.begin(), true, false);
+=======
+
+    connections.emplace_front(loop_time, receiver_stack(), &m_poller, std::move(skt));
+    
+    m_poller.add_fd(connections.front().m_socket, connections.begin(), true, false);
+>>>>>>> parent of 02818c2 (threadpooled the connection handling event loop)
 
 }
 
 server::~server() {
+    logger << "~server()" << std::endl;
+}
+
+
+static volatile void* donothing;
+void server::sanity(const std::vector<fpollfd> events) {
     
+<<<<<<< HEAD
     {
         //std::lock_guard lk(m_mut);
         m_done = true;
@@ -348,6 +411,47 @@ server::~server() {
     //}
     logger << "~server()" << std::endl;
 }
+=======
+    // this cannot create undefined behaviour that didn't already exist and it
+    // has some chance of catching it so why not.
+    for(auto it = connections.cbegin(); it != connections.cend(); it++) { donothing = &it; }
+    logger << "connections not corrupted" << std::endl;
+    
+    
+    for(const auto& event : events) {
+        
+        if(!std::holds_alternative<node_ptr>(event.node)) {
+            continue;
+        }
+        auto event_node = std::get<node_ptr>(event.node);
 
+        file_assert(event_node != connections.cend(), "end event polled"); 
+        
+        file_assert(event.read or event.write, "polled event neither for read nor write");
+        
+        
+        
+        bool found = false;
+        for(auto it = connections.cbegin(); it != connections.cend(); it++) {
+            if(event_node == it) {
+                found = true;
+                break;
+            }
+        }
+        file_assert(found, "unknown event polled");
+        
+        if( event_node->activity == status::closing ) {
+            file_assert(!event.read, "closing connection polled for read");
+            file_assert(event.write, "closing connection polled but not for write");
+        }
+
+    }
+    for(const auto& c : connections) {
+        file_assert(c.activity != status::closed, "closed socket polled");
+    }
+>>>>>>> parent of 02818c2 (threadpooled the connection handling event loop)
+
+    logger << "connections OK" << std::endl;
+}
 
 } // namespace fbw
