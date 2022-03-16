@@ -1,6 +1,6 @@
 //
 //  cppsocket.hpp
-//  HTTPS Server
+//  piserver
 //
 //  Created by Frederick Benjamin Woodruff on 13/07/2021.
 //
@@ -131,5 +131,9 @@ template<> struct std::hash<fbw::cppsocket> { // does this slice anything?
         return std::hash<int>{}(sock.m_fd);
     }
 };
+
+
+
+
 
 #endif /* cppsocket_hpp */

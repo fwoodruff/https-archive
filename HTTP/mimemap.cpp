@@ -1,6 +1,5 @@
 //
 //  mimemap.cpp
-//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 20/07/2021.
 //

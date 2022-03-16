@@ -1,6 +1,5 @@
 //
-//  polling.hpp
-//  HTTPS Server
+//  poller.hpp
 //
 //  Created by Frederick Benjamin Woodruff on 10/07/2021.
 //

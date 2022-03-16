@@ -1,12 +1,12 @@
 //
-//  TLS_enums.hpp
-//  HTTPS Server
+//  TLS_enums.h
+//  basichttps
 //
 //  Created by Frederick Benjamin Woodruff on 05/12/2021.
 //
 
-#ifndef TLS_enums_hpp
-#define TLS_enums_hpp
+#ifndef TLS_enums_h
+#define TLS_enums_h
 
 
 
@@ -166,4 +166,4 @@ public:
 
 } // namespace fbw
 
-#endif /* TLS_enums_hpp */
+#endif /* TLS_enums_h */

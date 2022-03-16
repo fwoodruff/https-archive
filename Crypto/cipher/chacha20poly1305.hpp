@@ -1,6 +1,6 @@
 //
 //  chacha20poly1305.hpp
-//  HTTPS Server
+//  https_server
 //
 //  Created by Frederick Benjamin Woodruff on 12/02/2022.
 //

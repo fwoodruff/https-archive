@@ -1,6 +1,6 @@
 //
 //  x25519.hpp
-//  HTTPS Server
+//  x25519
 //
 //  Created by Frederick Benjamin Woodruff on 08/08/2021.
 //

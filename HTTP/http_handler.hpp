@@ -1,6 +1,5 @@
 //
 //  http_handler.hpp
-//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 23/07/2021.
 //

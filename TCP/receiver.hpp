@@ -1,12 +1,12 @@
 //
-//  receiver.hpp
-//  HTTPS Server
+//  pipe.hpp
+//  https_server
 //
 //  Created by Frederick Benjamin Woodruff on 17/12/2021.
 //
 
-#ifndef receiver_hpp
-#define receiver_hpp
+#ifndef pipe_hpp
+#define pipe_hpp
 
 #include <stdio.h>
 #include <memory>
@@ -44,4 +44,4 @@ public:
 
 }
 
-#endif /* receiver_hpp */
+#endif /* pipe_hpp */

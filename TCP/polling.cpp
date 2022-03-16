@@ -1,10 +1,3 @@
-//
-//  polling.cpp
-//  HTTPS Server
-//
-//  Created by Frederick Benjamin Woodruff on 10/07/2021.
-//
-
 
 #include "polling.hpp"
 

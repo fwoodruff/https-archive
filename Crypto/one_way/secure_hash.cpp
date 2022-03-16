@@ -1,10 +1,3 @@
-//
-//  secure_hash.cpp
-//  HTTPS Server
-//
-//  Created by Frederick Benjamin Woodruff on 07/12/2021.
-//
-
 
 #include "secure_hash.hpp"
 #include "global.hpp"
