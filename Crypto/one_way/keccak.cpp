@@ -12,7 +12,6 @@
 #include <array>
 #include <cassert>
 #include <climits>
-#include <mutex>
 #include <random>
 #include <cstring>
 

@@ -1,2433 +1,491 @@
-<<<<<<< HEAD
 loop count: 1
-num connections: 0
-num connections polled: 1
-event type: acceptor
 loop count: 2
-num connections: 1
-num connections polled: 1
 read write
-event type: connection
 loop count: 3
-num connections: 1
-num connections polled: 1
 read write
-event type: connection
+exception
+closing connection
 loop count: 4
-num connections: 1
-num connections polled: 1
 read write
-event type: connection
 loop count: 5
-num connections: 1
-num connections polled: 1
 read write
-event type: connection
 loop count: 6
-num connections: 1
-num connections polled: 1
 read write
-event type: connection
 loop count: 7
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
+read write
 loop count: 8
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
 loop count: 9
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
+read write
 loop count: 10
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
+read write
+exception
+closing connection
 loop count: 11
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
 loop count: 12
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
+read write
 loop count: 13
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
+read write
 loop count: 14
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
+read write
 loop count: 15
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
+read write
 loop count: 16
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
+read write
 loop count: 17
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 18
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 19
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 20
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 21
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 22
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 23
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 24
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 25
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 26
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 27
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 28
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 29
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 30
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 31
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 32
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 33
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 34
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 35
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 36
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 37
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 38
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 39
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 40
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 41
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 42
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 43
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 44
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 45
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 46
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 47
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 48
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 49
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 50
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 51
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 52
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 53
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 54
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 55
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 56
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 57
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 58
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 59
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 60
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 61
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 62
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 63
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 64
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 65
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 66
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 67
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 68
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 69
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 70
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 71
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 72
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 73
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 74
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 75
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 76
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 77
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 78
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 79
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 80
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 81
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 82
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 83
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 84
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 85
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 86
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 87
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 88
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 89
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 90
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 91
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 92
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 93
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 94
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 95
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 96
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 97
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 98
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 99
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 100
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 101
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 102
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 103
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 104
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 105
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 106
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 107
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 108
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 109
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 110
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 111
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 112
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 113
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 114
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 115
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 116
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 117
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 118
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 119
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 120
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 121
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 122
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 123
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 124
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 125
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 126
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 127
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 128
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 129
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 130
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 131
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 132
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 133
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 134
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 135
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 136
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 137
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 138
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 139
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 140
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 141
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 142
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 143
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 144
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 145
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 146
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 147
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 148
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 149
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 150
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 151
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 152
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 153
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 154
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 155
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 156
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 157
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 158
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 159
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 160
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 161
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 162
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 163
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 164
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 165
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 166
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 167
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 168
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 169
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 170
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 171
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 172
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 173
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 174
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 175
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 176
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 177
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 178
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 179
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 180
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 181
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 182
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 183
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 184
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 185
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 186
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 187
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 188
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 189
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 190
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 191
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 192
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 193
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 194
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 195
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 196
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 197
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 198
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 199
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 200
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 201
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 202
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 203
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 204
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 205
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 206
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 207
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 208
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 209
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 210
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 211
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 212
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 213
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 214
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 215
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 216
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 217
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 218
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 219
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 220
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 221
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 222
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 223
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 224
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 225
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 226
-num connections: 1
-num connections polled: 1
 flush
-event type: connection
 loop count: 227
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
+flush
 loop count: 228
-num connections: 1
-num connections polled: 1
-event type: connection
+flush
 loop count: 229
-num connections: 0
-num connections polled: 1
-event type: acceptor
+flush
 loop count: 230
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
+flush
 loop count: 231
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
+flush
 loop count: 232
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
+flush
 loop count: 233
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
+flush
 loop count: 234
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
+flush
 loop count: 235
-num connections: 1
-num connections polled: 1
-event type: connection
+flush
 loop count: 236
-num connections: 0
-num connections polled: 1
-event type: acceptor
+flush
 loop count: 237
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
+flush
 loop count: 238
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
+flush
 loop count: 239
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
+flush
 loop count: 240
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
+flush
 loop count: 241
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
+flush
 loop count: 242
-num connections: 1
-num connections polled: 1
-event type: connection
 loop count: 243
-num connections: 0
-num connections polled: 1
-event type: acceptor
+read write
 loop count: 244
-num connections: 1
-num connections polled: 1
 read write
-event type: connection
+exception
+closing connection
 loop count: 245
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
-loop count: 246
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
-loop count: 247
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
-loop count: 248
-num connections: 1
-num connections polled: 0
-loop count: 249
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
-loop count: 250
-num connections: 1
-num connections polled: 1
-read write
-exception
-closing connection
-event type: connection
-loop count: 251
-num connections: 0
-num connections polled: 1
-event type: acceptor
-loop count: 252
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
-loop count: 253
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
-loop count: 254
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
-loop count: 255
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
-loop count: 256
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
-loop count: 257
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 258
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 259
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 260
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 261
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 262
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 263
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 264
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 265
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 266
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 267
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 268
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 269
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 270
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 271
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 272
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 273
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 274
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 275
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 276
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 277
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 278
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 279
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 280
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 281
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 282
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 283
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 284
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 285
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 286
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 287
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 288
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 289
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 290
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 291
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 292
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 293
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 294
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 295
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 296
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 297
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 298
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 299
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 300
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 301
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 302
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 303
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 304
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 305
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 306
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 307
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 308
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 309
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 310
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 311
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 312
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 313
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 314
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 315
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 316
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 317
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 318
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 319
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 320
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 321
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 322
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 323
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 324
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 325
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 326
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 327
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 328
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 329
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 330
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 331
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 332
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 333
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 334
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 335
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 336
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 337
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 338
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 339
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 340
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 341
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 342
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 343
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 344
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 345
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 346
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 347
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 348
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 349
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 350
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 351
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 352
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 353
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 354
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 355
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 356
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 357
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 358
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 359
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 360
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 361
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 362
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 363
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 364
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 365
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 366
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 367
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 368
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 369
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 370
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 371
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 372
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 373
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 374
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 375
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 376
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 377
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 378
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 379
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 380
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 381
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 382
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 383
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 384
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 385
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 386
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 387
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 388
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 389
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 390
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 391
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 392
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 393
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 394
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 395
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 396
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 397
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 398
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 399
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 400
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 401
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 402
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 403
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 404
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 405
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 406
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 407
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 408
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 409
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 410
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 411
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 412
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 413
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 414
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 415
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 416
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 417
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 418
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 419
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 420
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 421
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 422
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 423
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 424
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 425
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 426
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 427
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 428
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 429
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 430
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 431
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 432
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 433
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 434
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 435
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 436
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 437
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 438
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 439
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 440
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 441
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 442
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 443
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 444
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 445
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 446
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 447
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 448
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 449
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 450
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 451
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 452
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 453
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 454
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 455
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 456
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 457
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 458
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 459
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 460
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 461
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 462
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 463
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 464
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 465
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 466
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 467
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 468
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 469
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 470
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 471
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 472
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 473
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 474
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 475
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 476
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 477
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 478
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 479
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 480
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 481
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 482
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 483
-num connections: 1
-num connections polled: 1
-flush
-event type: connection
-loop count: 484
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
-loop count: 485
-num connections: 1
-num connections polled: 1
-read write
-event type: connection
-loop count: 486
-num connections: 1
-num connections polled: 1
-read write
-exception
-closing connection
-event type: connection
-loop count: 487
-num connections: 0
-=======
-exception
-closing connection
-exception
-closing connection
->>>>>>> parent of 02818c2 (threadpooled the connection handling event loop)
