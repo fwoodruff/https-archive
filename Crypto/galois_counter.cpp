@@ -323,22 +323,22 @@ void AES_128_GCM_SHA256::set_key_material(ustring material) {
     std::vector<uint8_t> server_write_key;
     server_write_key.resize(16);
     
-    m_client_implicit_write_IV.resize(4);
-    m_server_implicit_write_IV.resize(4);
+    client_implicit_write_IV.resize(4);
+    server_implicit_write_IV.resize(4);
     
     auto it = material.begin();
     std::copy_n(it, client_write_key.size(), client_write_key.begin());
     it += client_write_key.size();
     std::copy_n(it, server_write_key.size(), server_write_key.begin());
     it += server_write_key.size();
-    std::copy_n(it, m_client_implicit_write_IV.size(), m_client_implicit_write_IV.begin());
-    it += m_client_implicit_write_IV.size();
-    std::copy_n(it, m_server_implicit_write_IV.size(), m_server_implicit_write_IV.begin());
-    it += m_server_implicit_write_IV.size();
+    std::copy_n(it, client_implicit_write_IV.size(), client_implicit_write_IV.begin());
+    it += client_implicit_write_IV.size();
+    std::copy_n(it, server_implicit_write_IV.size(), server_implicit_write_IV.begin());
+    it += server_implicit_write_IV.size();
     
     
-    m_client_write_round_keys = aes_key_schedule(client_write_key);
-    m_server_write_round_keys = aes_key_schedule(server_write_key);
+    client_write_round_keys = aes_key_schedule(client_write_key);
+    server_write_round_keys = aes_key_schedule(server_write_key);
 
 }
 
@@ -349,8 +349,8 @@ tls_record AES_128_GCM_SHA256::encrypt(tls_record record) {
     ustring sequence_no;
     sequence_no.resize(8);
     
-    write_int(m_seqno_server, sequence_no.data(), 8);
-    m_seqno_server++;
+    write_int(seqno_server, sequence_no.data(), 8);
+    seqno_server++;
 
     
     uint16_t msglen = htons(record.m_contents.size());
@@ -364,10 +364,10 @@ tls_record AES_128_GCM_SHA256::encrypt(tls_record record) {
     additional_data.resize(13);
     std::memcpy(&additional_data[11], &msglen, 2);
     
-    ustring iv = m_server_implicit_write_IV + sequence_no;
+    ustring iv = server_implicit_write_IV + sequence_no;
 
     
-    auto [ciphertext, auth_tag] = aes_gcm_ae(m_server_write_round_keys, iv, record.m_contents, additional_data);
+    auto [ciphertext, auth_tag] = aes_gcm_ae(server_write_round_keys, iv, record.m_contents, additional_data);
     
     file_assert(auth_tag.size() == 16, "no auth tag");
     file_assert(sequence_no.size() == 8, "no seq no");
@@ -384,8 +384,8 @@ tls_record AES_128_GCM_SHA256::decrypt(tls_record record) {
     
     ustring sequence;
     sequence.resize(8);
-    write_int(m_seqno_client, sequence.data(), 8);
-    m_seqno_client++;
+    write_int(seqno_client, sequence.data(), 8);
+    seqno_client++;
 
     ustring explicit_IV;
     explicit_IV.append({record.m_contents.begin(), record.m_contents.begin()+8});
@@ -404,9 +404,9 @@ tls_record AES_128_GCM_SHA256::decrypt(tls_record record) {
     uint16_t msglen = htons(record.m_contents.size() - auth_tag.size() - explicit_IV.size());
     std::memcpy(&additional_data[11], &msglen, 2);
 
-    auto iv = m_client_implicit_write_IV + explicit_IV;
+    auto iv = client_implicit_write_IV + explicit_IV;
     
-    ustring plain = aes_gcm_ad(m_client_write_round_keys, iv, ciphertext, additional_data, auth_tag);
+    ustring plain = aes_gcm_ad(client_write_round_keys, iv, ciphertext, additional_data, auth_tag);
     record.m_contents = plain;
      
     return record;

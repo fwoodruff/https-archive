@@ -30,82 +30,82 @@ void xor_lane(std::array<uint8_t, 200>& state,  int x, int y, uint64_t val) noex
 
 
 keccak_sponge::keccak_sponge(size_t capacity_) noexcept {
-    m_capacity = capacity_;
-    m_rate = 1600 - m_capacity;
-    file_assert(m_rate % 8 == 0 and m_capacity < 1600, "bad keccak rate");
-    m_state = {0};
-    m_rate_in_bytes = m_rate/8;
-    m_block_size = 0;
-    m_absorb_phase = true;
-    m_idx = 0;
+    capacity = capacity_;
+    rate = 1600 - capacity;
+    file_assert(rate % 8 == 0 and capacity < 1600, "bad keccak rate");
+    state = {0};
+    rate_in_bytes = rate/8;
+    block_size = 0;
+    absorb_phase = true;
+    idx = 0;
 }
 
 void keccak_sponge::reset() noexcept {
-    m_absorb_phase = true;
-    m_block_size = 0;
-    m_state = {0};
+    absorb_phase = true;
+    block_size = 0;
+    state = {0};
 }
 
 void keccak_sponge::absorb(const uint8_t* const input, size_t inputByteLen) noexcept {
-    assert(m_absorb_phase);
+    assert(absorb_phase);
     if(!inputByteLen) return;
     while(inputByteLen > 0) {
-        if(m_idx==m_rate_in_bytes) {
-            keccak_F1600_state_permute(m_state);
-            m_idx = 0;
+        if(idx==rate_in_bytes) {
+            keccak_F1600_state_permute(state);
+            idx = 0;
         }
-        file_assert(m_idx < 200, "keccak absorb");
-        m_state[m_idx++] ^= input[--inputByteLen];
+        file_assert(idx < 200, "keccak absorb");
+        state[idx++] ^= input[--inputByteLen];
     }
 }
 
 void keccak_sponge::absorb(const char* const input, size_t inputByteLen) noexcept {
-    file_assert(m_absorb_phase, "keccak used in wrong phase");
+    file_assert(absorb_phase, "keccak used in wrong phase");
     if(!inputByteLen) return;
     while(inputByteLen > 0) {
-        if(m_idx==m_rate_in_bytes) {
-            keccak_F1600_state_permute(m_state);
-            m_idx = 0;
+        if(idx==rate_in_bytes) {
+            keccak_F1600_state_permute(state);
+            idx = 0;
         }
-        m_state[m_idx++] ^= static_cast<uint8_t>(input[--inputByteLen]);
+        state[idx++] ^= static_cast<uint8_t>(input[--inputByteLen]);
     }
 }
 
 
 
 void keccak_sponge::squeeze(uint8_t* const output, size_t outputByteLen) noexcept {
-    if(m_absorb_phase) {
-        file_assert(m_idx < 200, "keccak squeeze");
-        m_state[m_idx] ^= 0x1F;
-        m_state[m_rate_in_bytes-1] ^= 0x80;
-        keccak_F1600_state_permute(m_state);
-        m_absorb_phase = false;
-        m_idx = 0;
+    if(absorb_phase) {
+        file_assert(idx < 200, "keccak squeeze");
+        state[idx] ^= 0x1F;
+        state[rate_in_bytes-1] ^= 0x80;
+        keccak_F1600_state_permute(state);
+        absorb_phase = false;
+        idx = 0;
     }
     while(outputByteLen > 0) {
-        if(m_idx==m_rate_in_bytes) {
-            keccak_F1600_state_permute(m_state);
-            m_idx = 0;
+        if(idx==rate_in_bytes) {
+            keccak_F1600_state_permute(state);
+            idx = 0;
         }
-        output[--outputByteLen] = m_state[m_idx++];
+        output[--outputByteLen] = state[idx++];
     }
 }
 
 void keccak_sponge::squeeze(char* const output, size_t outputByteLen) noexcept {
-    if(m_absorb_phase) {
-        file_assert(m_idx < 200, "keccak squeeze");
-        m_state[m_idx] ^= 0x1F;
-        m_state[m_rate_in_bytes-1] ^= 0x80;
-        keccak_F1600_state_permute(m_state);
-        m_absorb_phase = false;
-        m_idx = 0;
+    if(absorb_phase) {
+        file_assert(idx < 200, "keccak squeeze");
+        state[idx] ^= 0x1F;
+        state[rate_in_bytes-1] ^= 0x80;
+        keccak_F1600_state_permute(state);
+        absorb_phase = false;
+        idx = 0;
     }
     while(outputByteLen > 0) {
-        if(m_idx==m_rate_in_bytes) {
-            keccak_F1600_state_permute(m_state);
-            m_idx = 0;
+        if(idx==rate_in_bytes) {
+            keccak_F1600_state_permute(state);
+            idx = 0;
         }
-        output[--outputByteLen] = static_cast<char>(m_state[m_idx++]);
+        output[--outputByteLen] = static_cast<char>(state[idx++]);
     }
 }
 

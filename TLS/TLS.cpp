@@ -54,6 +54,8 @@ constexpr size_t TLS_record_size = (1u << 14) - 5;
 
 namespace fbw {
 
+
+
 std::optional<tls_record> try_extract_record(ustring& input);
 
 
@@ -66,7 +68,7 @@ status_message TLS::handle(ustring input) noexcept {
     status_message output;
     
     
-    if(m_more_to_send) {
+    if(more_to_send) {
         output =  generate_packet(1); // around 10kb per batch
         return output;
     }
@@ -87,11 +89,11 @@ status_message TLS::handle(ustring input) noexcept {
         auto r = tls_record(ContentType::Alert);
 
         r.m_contents = { static_cast<uint8_t>(e.m_l), static_cast<uint8_t>(e.m_d) };
-        if(m_is_change_cipher_spec_done) {
+        if(is_change_cipher_spec_done) {
             
-            file_assert(m_cipher_context != nullptr, "null cipher");
-            file_assert(m_is_client_hello_done, "handshake done without hello");
-            r = m_cipher_context->encrypt(r); // this is breaking
+            file_assert(cipher_context != nullptr, "null cipher");
+            file_assert(is_client_hello_done, "handshake done without hello");
+            r = cipher_context->encrypt(r); // this is breaking
             
         }
         
@@ -117,8 +119,8 @@ void TLS::handle_record(tls_record record, status_message& output) {
     
     
     
-    if (m_is_change_cipher_spec_done) {
-        record = m_cipher_context->decrypt(std::move(record));
+    if (is_change_cipher_spec_done) {
+        record = cipher_context->decrypt(std::move(record));
     }
 
     switch(record.get_type()) {
@@ -168,10 +170,10 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
     file_assert(hello.at(0) == 1, "handle_client_hello");
     
     
-    if (m_is_client_hello_done == true or
-        m_is_client_key_exchange_done == true or
-        m_is_change_cipher_spec_done == true or
-        m_is_client_handshake_finished_done == true) {
+    if (is_client_hello_done == true or
+        is_client_key_exchange_done == true or
+        is_change_cipher_spec_done == true or
+        is_client_handshake_finished_done == true) {
         
         throw ssl_error("bad handshake message ordering", AlertLevel::fatal, AlertDescription::unexpected_message);
     }
@@ -194,7 +196,7 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
     size_t ciphers_len = safe_asval(hello, idx, 2);
     hello.at(idx+ ciphers_len + 2);
     cipher = cipher_choice(hello.substr(idx+2, ciphers_len));
-    m_is_client_hello_done = true;
+    is_client_hello_done = true;
     
     idx += ciphers_len + 2;
     // compression
@@ -225,8 +227,8 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
         throw ssl_error("bad extension", AlertLevel::fatal, AlertDescription::internal_error);
     }
 
-    if(m_is_client_hello_done) {
-        m_handshake_hasher->update(hello);
+    if(is_client_hello_done) {
+        handshake_hasher->update(hello);
     } else {
         throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
     }
@@ -256,8 +258,8 @@ tls_record TLS::server_hello() {
     hello_record.m_contents.append({0x00, 0x05, 0xff, 0x01, 0x00, 0x01, 0x00}); // extensions
     write_int(hello_record.m_contents.size()-4, &hello_record.m_contents[1], 3);
 
-    if(m_is_client_hello_done) {
-        m_handshake_hasher->update(hello_record.m_contents);
+    if(is_client_hello_done) {
+        handshake_hasher->update(hello_record.m_contents);
     } else {
         throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
     }
@@ -287,8 +289,8 @@ tls_record TLS::server_certificate(){
     write_int(certificate_record.m_contents.size()-7, &certificate_record.m_contents[4], 3);
 
     
-    if(m_is_client_hello_done) {
-        m_handshake_hasher->update(certificate_record.m_contents);
+    if(is_client_hello_done) {
+        handshake_hasher->update(certificate_record.m_contents);
     } else {
         throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
     }
@@ -297,9 +299,9 @@ tls_record TLS::server_certificate(){
 }
 
 tls_record TLS::server_key_exchange(){
-    randomgen.randgen(m_server_private_key_ephem.begin(), m_server_private_key_ephem.size());
+    randomgen.randgen(server_private_key_ephem.begin(), server_private_key_ephem.size());
     std::array<uint8_t,32> privrev;
-    std::reverse_copy(m_server_private_key_ephem.cbegin(), m_server_private_key_ephem.cend(), privrev.begin());
+    std::reverse_copy(server_private_key_ephem.cbegin(), server_private_key_ephem.cend(), privrev.begin());
     std::array<uint8_t,32> pubkey_ephem = curve25519::base_multiply(privrev); // endianness could be wrong
     std::reverse(pubkey_ephem.begin(), pubkey_ephem.end());
 
@@ -316,11 +318,11 @@ tls_record TLS::server_key_exchange(){
     signed_empheral_key.append(pubkey_ephem.cbegin(), pubkey_ephem.cend());
 
     
-    if(!m_is_client_hello_done) {
+    if(!is_client_hello_done) {
         throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
     }
     
-    auto hashctx = m_hasher_factory->clone();
+    auto hashctx = hasher_factory->clone();
     
     hashctx->update(m_client_random);
     hashctx->update(m_server_random);
@@ -349,11 +351,11 @@ tls_record TLS::server_key_exchange(){
 
     write_int(record.m_contents.size()-4, &record.m_contents[1], 3);
     
-    if(!m_is_client_hello_done) {
+    if(!is_client_hello_done) {
         throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
     }
     
-    m_handshake_hasher->update(record.m_contents);
+    handshake_hasher->update(record.m_contents);
     return record;
 }
 
@@ -361,21 +363,21 @@ tls_record TLS::server_hello_done() {
     tls_record record(ContentType::Handshake);
     record.m_contents = { static_cast<uint8_t>(HandshakeType::server_hello_done), 0x00, 0x00, 0x00 };
     
-    if(!m_is_client_hello_done) {
+    if(!is_client_hello_done) {
         throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
     }
     
-    m_handshake_hasher->update(record.m_contents);
+    handshake_hasher->update(record.m_contents);
     return record;
 }
 
 void TLS::handle_client_key_exchange(const ustring& key_exchange) {
     file_assert(key_exchange.at(0) == static_cast<uint8_t>(HandshakeType::client_key_exchange), "client key bad");
     
-    if (m_is_client_hello_done == false or
-        m_is_client_key_exchange_done == true or
-        m_is_change_cipher_spec_done == true or
-        m_is_client_handshake_finished_done == true) {
+    if (is_client_hello_done == false or
+        is_client_key_exchange_done == true or
+        is_change_cipher_spec_done == true or
+        is_client_handshake_finished_done == true) {
         
         throw ssl_error("bad handshake message ordering", AlertLevel::fatal, AlertDescription::unexpected_message);
     }
@@ -390,30 +392,30 @@ void TLS::handle_client_key_exchange(const ustring& key_exchange) {
     if(key_exchange.size() < 37) {
         throw ssl_error("bad public key", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
-    std::copy(&key_exchange[5], &key_exchange[37], m_client_public_key.begin());
+    std::copy(&key_exchange[5], &key_exchange[37], client_public_key.begin());
     
-    if(!m_is_client_hello_done) {
+    if(!is_client_hello_done) {
         throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
     }
     
-    m_master_secret = make_master_secret(m_hasher_factory, m_server_private_key_ephem, m_client_public_key, m_server_random, m_client_random);
+    master_secret = make_master_secret(hasher_factory, server_private_key_ephem, client_public_key, m_server_random, m_client_random);
     
     // AES_256_CBC_SHA256 has the largest amount of material at 128 bytes
-    ustring key_material = expand_master(m_master_secret, m_server_random, m_client_random, 128);
+    ustring key_material = expand_master(master_secret, m_server_random, m_client_random, 128);
     
     
-    m_cipher_context->set_key_material(key_material);
-    m_handshake_hasher->update(key_exchange);
+    cipher_context->set_key_material(key_material);
+    handshake_hasher->update(key_exchange);
     
-    m_is_client_key_exchange_done = true;
+    is_client_key_exchange_done = true;
 }
 
 void TLS::client_change_cipher_spec(const ustring& change_message) {
 
-    if (m_is_client_hello_done == false or
-        m_is_client_key_exchange_done == false or
-        m_is_change_cipher_spec_done == true or
-        m_is_client_handshake_finished_done == true) {
+    if (is_client_hello_done == false or
+        is_client_key_exchange_done == false or
+        is_change_cipher_spec_done == true or
+        is_client_handshake_finished_done == true) {
         
         throw ssl_error("bad handshake message ordering", AlertLevel::fatal, AlertDescription::unexpected_message);
     }
@@ -422,17 +424,17 @@ void TLS::client_change_cipher_spec(const ustring& change_message) {
         throw ssl_error("bad cipher spec", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
     
-    m_is_change_cipher_spec_done = true;
+    is_change_cipher_spec_done = true;
 }
 
 
 void TLS::client_handshake_finished(const ustring& finish, status_message& output) {
     file_assert(finish.at(0) == static_cast<uint8_t>(HandshakeType::finished), "bad record type");
     
-    if (m_is_client_hello_done == false or
-        m_is_client_key_exchange_done == false or
-        m_is_change_cipher_spec_done == false or
-        m_is_client_handshake_finished_done == true) {
+    if (is_client_hello_done == false or
+        is_client_key_exchange_done == false or
+        is_change_cipher_spec_done == false or
+        is_client_handshake_finished_done == true) {
         
         throw ssl_error("bad handshake message ordering", AlertLevel::fatal, AlertDescription::unexpected_message);
     }
@@ -446,14 +448,14 @@ void TLS::client_handshake_finished(const ustring& finish, status_message& outpu
     const std::string seed_signed = "client finished";
     ustring seed;
     seed.append(seed_signed.cbegin(), seed_signed.cend());
-    if(!m_is_client_hello_done) {
+    if(!is_client_hello_done) {
         throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
     }
-    auto local_hasher = m_handshake_hasher->clone();
+    auto local_hasher = handshake_hasher->clone();
     auto handshake_hash = local_hasher->hash();
     seed.append(handshake_hash.cbegin(), handshake_hash.cend());
 
-    const auto ctx = hmac(m_hasher_factory->clone(), m_master_secret);
+    const auto ctx = hmac(hasher_factory->clone(), master_secret);
     
     
     auto ctx2 = ctx;
@@ -476,11 +478,11 @@ void TLS::client_handshake_finished(const ustring& finish, status_message& outpu
         throw ssl_error("handshake verification failed", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
     
-    m_handshake_hasher->update(finish);
+    handshake_hasher->update(finish);
     server_change_cipher_spec(output);
     server_handshake_finished(output);
     
-    m_is_client_handshake_finished_done = true;
+    is_client_handshake_finished_done = true;
 }
 
 void TLS::server_change_cipher_spec(status_message& output) {
@@ -498,17 +500,17 @@ void TLS::server_handshake_finished(status_message& output) {
     seed.append(seedsi.cbegin(),seedsi.cend());
     
     
-    if(!m_is_client_hello_done) {
+    if(!is_client_hello_done) {
         throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
     }
     
     
-    auto local_hasher = m_handshake_hasher->clone(); // the others?
+    auto local_hasher = handshake_hasher->clone(); // the others?
     auto handshake_hash = local_hasher->hash();
     file_assert(handshake_hash.size() == 32, "handshake hash size bad");
     seed.append(handshake_hash.begin(), handshake_hash.end());
 
-    const auto ctx = hmac(m_hasher_factory->clone(), m_master_secret);
+    const auto ctx = hmac(hasher_factory->clone(), master_secret);
     auto ctx2 = ctx;
     
     auto a1 = (ctx2 = ctx)
@@ -524,8 +526,8 @@ void TLS::server_handshake_finished(status_message& output) {
     out.m_contents.append(&p1[0], &p1[12]);
 
 
-    if(m_is_change_cipher_spec_done) {
-        out = m_cipher_context->encrypt(std::move(out));
+    if(is_change_cipher_spec_done) {
+        out = cipher_context->encrypt(std::move(out));
     } else {
         throw ssl_error("Unwilling to respond on unencrypted channel", AlertLevel::fatal, AlertDescription::insufficient_security);
     }
@@ -543,27 +545,27 @@ void TLS::server_handshake_finished(status_message& output) {
 
  */
 status_message TLS::generate_packet(int num_records) {
-    file_assert(m_more_to_send == true, "more_to_send == true");
+    file_assert(more_to_send == true, "more_to_send == true");
     status_message output;
     
     for(int i = 0; i < num_records; i++) {
         size_t small_record_size = std::clamp(size_t(randomgen.randgen64() % TLS_record_size), size_t(1), TLS_record_size);
         size_t record_size = (randomgen.randgen64() % 10 != 0) ? TLS_record_size : small_record_size;
-        record_size = std::min(record_size, m_app_out.m_response.size() - m_send_byte_idx);
+        record_size = std::min(record_size, app_out.m_response.size() - send_byte_idx);
         
         tls_record out(ContentType::Application);
-        out.m_contents.append(&m_app_out.m_response[m_send_byte_idx],
-                              &m_app_out.m_response[m_send_byte_idx+record_size]);
-        out = m_cipher_context->encrypt(std::move(out));
+        out.m_contents.append(&app_out.m_response[send_byte_idx],
+                              &app_out.m_response[send_byte_idx+record_size]);
+        out = cipher_context->encrypt(std::move(out));
         output.m_response.append(out.serialise());
         
-        m_send_byte_idx += record_size;
+        send_byte_idx += record_size;
         
-        if(m_send_byte_idx == m_app_out.m_response.size()) {
-            m_more_to_send = false;
-            m_send_byte_idx = 0;
-            output.m_status = m_app_out.m_status;
-            m_app_out.m_response.clear();
+        if(send_byte_idx == app_out.m_response.size()) {
+            more_to_send = false;
+            send_byte_idx = 0;
+            output.m_status = app_out.m_status;
+            app_out.m_response.clear();
             break;
         } else {
             output.m_status = status::flush;
@@ -574,20 +576,32 @@ status_message TLS::generate_packet(int num_records) {
 
 
 void TLS::client_application_data(const ustring& application_data, status_message& output) {
-    if (m_is_client_hello_done == false or
-        m_is_client_key_exchange_done == false or
-        m_is_change_cipher_spec_done == false or
-        m_is_client_handshake_finished_done == false) {
+    if (is_client_hello_done == false or
+        is_client_key_exchange_done == false or
+        is_change_cipher_spec_done == false or
+        is_client_handshake_finished_done == false) {
         
         throw ssl_error("handshake already done", AlertLevel::fatal, AlertDescription::unexpected_message);
     }
     
-    m_app_out = next->handle(application_data);
-    m_send_byte_idx = 0;
-    m_more_to_send = true;
+    app_out = next->handle(application_data);
+    send_byte_idx = 0;
+    more_to_send = true;
     output = TLS::generate_packet(10); // files over 100kb might not be returned in one go.
 }
 
+void TLS::tls_notify_close(status_message& output) {
+    tls_record close_record( ContentType::Alert);
+
+    close_record.m_contents = {1,0};
+    if(is_change_cipher_spec_done) {
+        file_assert(is_client_hello_done, "handshake finished without client hello");
+        close_record = cipher_context->encrypt(std::move(close_record));
+    }
+    output.m_response.append(close_record.serialise());
+    output.m_status = status::closing;
+    next.reset();
+}
 
 
 
@@ -621,9 +635,9 @@ void TLS::client_heartbeat(const ustring& heartbeat_message, status_message& out
 
     heartbeat_record.m_contents = {2};
     
-    if(m_is_change_cipher_spec_done) {
-        file_assert(m_is_client_hello_done, "handshake finished without client hello");
-        heartbeat_record = m_cipher_context->encrypt(std::move(heartbeat_record));
+    if(is_change_cipher_spec_done) {
+        file_assert(is_client_hello_done, "handshake finished without client hello");
+        heartbeat_record = cipher_context->encrypt(std::move(heartbeat_record));
     }
     output.m_response.append(heartbeat_record.serialise());
 }
@@ -675,35 +689,31 @@ std::array<uint8_t,48> TLS::make_master_secret(const std::unique_ptr<const hash_
 
 
 unsigned short TLS::cipher_choice(const ustring& s) {
-    
+
     for(size_t i = 0; i < s.size(); i += 2) {
         uint16_t x = safe_asval(s, i, 2);
         if (x == static_cast<uint16_t>(cipher_suites::TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256)) {
-            m_cipher_context = std::make_unique<cha::ChaCha20_Poly1305>();
-            m_hasher_factory = std::make_unique<sha256>();
-            m_handshake_hasher = m_hasher_factory->clone();
+            cipher_context = std::make_unique<cha::ChaCha20_Poly1305>();
+            hasher_factory = std::make_unique<sha256>();
+            handshake_hasher = hasher_factory->clone();
             return x;
         }
     }
-    
     for(size_t i = 0; i < s.size(); i += 2) {
         uint16_t x = safe_asval(s, i, 2);
-        
         if(x == static_cast<uint16_t>(cipher_suites::TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)) {
-            m_cipher_context = std::make_unique<aes::AES_128_GCM_SHA256>();
-            m_hasher_factory = std::make_unique<sha256>();
-            m_handshake_hasher = m_hasher_factory->clone();
+            cipher_context = std::make_unique<aes::AES_128_GCM_SHA256>();
+            hasher_factory = std::make_unique<sha256>();
+            handshake_hasher = hasher_factory->clone();
             return x;
         }
-        
         if (x == static_cast<uint16_t>(cipher_suites::TLS_ECDHE_ECDSA_WITH_AES_128_CBC_SHA)) {
-            m_cipher_context = std::make_unique<aes::AES_CBC_SHA>(16);
-            m_hasher_factory = std::make_unique<sha256>();
-            m_handshake_hasher = m_hasher_factory->clone();
+            cipher_context = std::make_unique<aes::AES_CBC_SHA>(16);
+            hasher_factory = std::make_unique<sha256>();
+            handshake_hasher = hasher_factory->clone();
             return x;
         }
     }
-
     throw ssl_error("no supported ciphers", AlertLevel::fatal, AlertDescription::handshake_failure );
 }
 
@@ -719,10 +729,10 @@ ustring TLS::expand_master(const std::array<unsigned char,48>& master,
     useed.append(client_random.cbegin(), client_random.cend());
     auto a = useed;
     
-    if(!m_is_client_hello_done) {
+    if(!is_client_hello_done) {
         throw ssl_error("expand_master bad", AlertLevel::fatal, AlertDescription::internal_error);
     }
-    const auto ctx = hmac(m_hasher_factory->clone(), master);
+    const auto ctx = hmac(hasher_factory->clone(), master);
     auto ctx2 = ctx;
     while(output.size() < len) {
         ctx2 = ctx;

@@ -22,6 +22,7 @@
 
 int main() {
 
+
     try {
             {
                 std::ifstream t(fbw::key_file);

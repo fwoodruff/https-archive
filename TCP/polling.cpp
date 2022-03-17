@@ -106,19 +106,19 @@ poll_context::poll_context() { }
 poll_context::~poll_context() { }
 
 void poll_context::add_fd(const cppsocket& sock, event_var return_object, bool read_state, bool write_state) {
-    [[maybe_unused]] auto succ = m_events.insert({sock.get_native(),{return_object, read_state,write_state}});
+    auto succ = m_events.insert({sock.get_native(),{return_object, read_state,write_state}});
     file_assert(succ.second == 1, "fd already in context");
 }
 
 void poll_context::mod_fd(const cppsocket& sock, bool read_state, bool write_state) {
     file_assert(m_events.find(sock.get_native()) != m_events.end(), "bad mod_fd assert");
     auto fp = m_events[sock.get_native()];
-    [[maybe_unused]] auto succ = m_events.erase(sock.get_native());
+    auto succ = m_events.erase(sock.get_native());
     
     file_assert(succ != 0, "file descriptor didn't exist, mod_fd");
     
-    fp.m_read = read_state;
-    fp.m_write = write_state;
+    fp.read = read_state;
+    fp.write = write_state;
     m_events.insert({sock.get_native(), fp});
 }
 
@@ -135,8 +135,8 @@ std::vector<fpollfd> poll_context::get_events(bool do_timeout) {
     std::vector<pollfd> evs;
 
     for(const auto& [fd, afpollfd] : m_events) {
-        short ev = (afpollfd.m_read ? POLLIN  : 0) |
-                   (afpollfd.m_write ? POLLOUT : 0) ;
+        short ev = (afpollfd.read ? POLLIN  : 0) |
+                   (afpollfd.write ? POLLOUT : 0) ;
         evs.push_back({ .fd = fd, .events = ev});
     }
     
@@ -152,10 +152,10 @@ std::vector<fpollfd> poll_context::get_events(bool do_timeout) {
     events.reserve(num_descriptors);
     for(const auto& pfd : evs) {
         if(pfd.revents & (POLLIN | POLLOUT)) {
-            fpollfd out_event {.m_read = false, .m_write = false};
-            out_event.m_node = m_events[pfd.fd].m_node;
-            if(pfd.revents & POLLIN)  { out_event.m_read  = true; }
-            if(pfd.revents & POLLOUT) { out_event.m_write = true; }
+            fpollfd out_event {.read = false, .write = false};
+            out_event.node = m_events[pfd.fd].node;
+            if(pfd.revents & POLLIN)  { out_event.read  = true; }
+            if(pfd.revents & POLLOUT) { out_event.write = true; }
             events.push_back(out_event);
         }
         if(events.size() >= MAX_SOCKETS) {
