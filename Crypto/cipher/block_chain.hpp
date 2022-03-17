@@ -5,8 +5,8 @@
 //  Created by Frederick Benjamin Woodruff on 12/12/2021.
 //
 
-#ifndef CBC_mode_hpp
-#define CBC_mode_hpp
+#ifndef block_chain_hpp
+#define block_chain_hpp
 
 #include "AES.hpp"
 #include "cipher_base.hpp"
@@ -38,4 +38,4 @@ public:
 
 } // namespace fbw
 
-#endif /* CBC_mode_hpp */
+#endif /* block_chain_hpp */

@@ -1,6 +1,6 @@
 //
-//  http_header.hpp
-//  piserver
+//  string_utils.hpp
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 15/07/2021.
 //

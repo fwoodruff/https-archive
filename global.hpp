@@ -8,10 +8,6 @@
 #ifndef global_hpp
 #define global_hpp
 
-<<<<<<< HEAD
-=======
-
->>>>>>> parent of e6d2d4a (tidied file comments)
 #include <cassert>
 #include <string>
 #include <array>

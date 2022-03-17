@@ -1,6 +1,6 @@
 //
-//  http_connection.hpp
-//  troubleshooter
+//  TLS.hpp
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 25/11/2021.
 //

@@ -1,6 +1,6 @@
 //
-//  http_connection.hpp
-//  piformserver
+//  HTTP.hpp
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 24/07/2021.
 //

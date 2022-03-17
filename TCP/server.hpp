@@ -1,5 +1,6 @@
 //
 //  server.hpp
+//  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 10/07/2021.
 //
@@ -20,6 +21,7 @@
 #include <functional>
 #include <list>
 
+<<<<<<< HEAD
 //#include <mutex>
 //#include <thread>
 //#include <condition_variable>
@@ -32,6 +34,11 @@ namespace fbw {
 
 
 
+=======
+
+namespace fbw {
+
+>>>>>>> parent of 02818c2 (threadpooled the connection handling event loop)
 /*
  opens a TCP socket to the internet
  accepts new connections
@@ -47,9 +54,13 @@ class server {
     using clist = std::list<connection>;
     static constexpr int max_listen = 10;
     poll_context m_poller;
+<<<<<<< HEAD
     clist m_connections;
     std::vector<fpollfd> m_loop_events;
     tp m_loop_time;
+=======
+    clist connections;
+>>>>>>> parent of 02818c2 (threadpooled the connection handling event loop)
     server_socket m_https_socket;
     server_socket m_redirect_socket;
     bool can_accept_old;
@@ -58,6 +69,7 @@ class server {
     void handle_event(fpollfd, tp) noexcept;
     
     
+<<<<<<< HEAD
     void server_thread_task();
     void do_task(fpollfd event);
     bool get_task();
@@ -71,6 +83,8 @@ class server {
     int m_events_started = 0;
     size_t m_threads_finished = 0;
 
+=======
+>>>>>>> parent of 02818c2 (threadpooled the connection handling event loop)
     
 public:
     server();

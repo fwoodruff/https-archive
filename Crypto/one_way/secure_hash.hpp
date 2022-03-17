@@ -1,13 +1,13 @@
 //
-//  secure_hash.cpp
+//  secure_hash.hpp
 //  HTTPS Server
 //
 //  Created by Frederick Benjamin Woodruff on 07/12/2021.
 //
 
 
-#ifndef secure_hash
-#define secure_hash
+#ifndef secure_hash_hpp
+#define secure_hash_hpp
 
 #include <array>
 #include <algorithm>
@@ -95,4 +95,4 @@ hmac::hmac(std::unique_ptr<hash_base> hasher, const T& key) :
 
 } // namespace fbw
 
-#endif   // secure_hash
+#endif   // secure_hash_hpp
