@@ -175,10 +175,10 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
     } catch(...) {
         file_assert(false, "uncaught exception in handle_connection");
     }
-    
 
     m_time_set = loop_time;
     
+<<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
     logger << "end of handle connection\n";
@@ -208,6 +208,10 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
 =======
     return activity == status::closed;
 >>>>>>> parent of a8b46b4 (reverting)
+=======
+    logger << "end of handle connection\n";
+    return m_activity == status::closed;
+>>>>>>> parent of 505c7de (TCP)
 }
 
 
