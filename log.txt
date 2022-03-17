@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 loop count: 1
 num connections: 0
 num connections polled: 1
@@ -2424,3 +2425,9 @@ closing connection
 event type: connection
 loop count: 487
 num connections: 0
+=======
+exception
+closing connection
+exception
+closing connection
+>>>>>>> parent of 02818c2 (threadpooled the connection handling event loop)

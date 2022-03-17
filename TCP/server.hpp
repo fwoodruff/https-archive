@@ -24,8 +24,11 @@
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
 =======
 >>>>>>> parent of 505c7de (TCP)
+=======
+>>>>>>> parent of ebdb5c6 (reverse)
 //#include <mutex>
 //#include <thread>
 //#include <condition_variable>
@@ -44,6 +47,11 @@ namespace fbw {
 
 
 
+=======
+
+namespace fbw {
+
+>>>>>>> parent of 02818c2 (threadpooled the connection handling event loop)
 /*
  opens a TCP socket to the internet
  accepts new connections
@@ -62,12 +70,16 @@ class server {
 <<<<<<< HEAD
 <<<<<<< HEAD
 <<<<<<< HEAD
+<<<<<<< HEAD
+=======
+>>>>>>> parent of ebdb5c6 (reverse)
     clist m_connections;
     std::vector<fpollfd> m_loop_events;
     tp m_loop_time;
 =======
     clist connections;
 >>>>>>> parent of 02818c2 (threadpooled the connection handling event loop)
+<<<<<<< HEAD
 =======
     clist connections;
     std::vector<fpollfd> loop_events;
@@ -78,6 +90,8 @@ class server {
     std::vector<fpollfd> m_loop_events;
     tp m_loop_time;
 >>>>>>> parent of 505c7de (TCP)
+=======
+>>>>>>> parent of ebdb5c6 (reverse)
     server_socket m_https_socket;
     server_socket m_redirect_socket;
 
@@ -85,6 +99,7 @@ class server {
     void handle_event(fpollfd, tp) noexcept;
     
     
+<<<<<<< HEAD
     void server_thread_task();
     void do_task(fpollfd event);
     bool get_task();
@@ -98,6 +113,8 @@ class server {
     int events_started = 0;
     size_t threads_finished = 0;
 
+=======
+>>>>>>> parent of 02818c2 (threadpooled the connection handling event loop)
     
 public:
     server();
