@@ -75,9 +75,6 @@ std::string file_to_http(const std::string& rootdir, std::string filename) {
         filename.append(".html");
     }
     
-    std::transform(filename.begin(), filename.end(), filename.begin(),
-        [](unsigned char c){ return std::tolower(c); });
-    
     std::string MIME;
     if(filename == "/favicon.ico") {
         MIME = "image/webp";
@@ -126,13 +123,25 @@ std::string redirect(std::string header, std::string domain) {
     }
     
     std::string filename = method[1];
-
+    
+    if( filename == "/") {
+        filename = "/index.html";
+    }
+    
+    std::string MIME;
+    if(filename == "/favicon.ico") {
+        MIME = "image/webp";
+    } else {
+        auto extension = extension_from_path(filename);
+        MIME = get_MIME(std::move(extension));
+    }
+    
     std::string body = "HTTP/1.1 301 Moved Permanently";
     
     std::ostringstream oss;
     oss << "HTTP/1.1 301 Moved Permanently\r\n"
         << "Location: https://" << domain << filename << "\r\n"
-        << "Content-Type: " << "text/html; charset=UTF-8\r\n"
+        << "Content-Type: " << MIME << (MIME.substr(0,4)=="text" ? "; charset=UTF-8" : "") << "\r\n"
         << "Content-Length: " << body.size() << "\r\n"
         << "Server: " << make_server_name() << "\r\n"
         << "\r\n"
