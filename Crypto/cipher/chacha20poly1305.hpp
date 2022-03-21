@@ -9,6 +9,7 @@
 #define chacha20poly1305_hpp
 
 #include <stdio.h>
+<<<<<<< HEAD
 #include "cipher_base.hpp"
 
 #include <vector>
@@ -42,5 +43,7 @@ public:
 void test();
 
 } // namespace fbw
+=======
+>>>>>>> parent of fd7d7e5 (started on ChaCha20 functionality)
 
 #endif /* chacha20poly1305_hpp */
