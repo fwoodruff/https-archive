@@ -101,7 +101,7 @@ status_message TLS::handle(ustring input) noexcept {
         
         return {str, status::closing };
     } catch(const std::out_of_range& e) {
-        next.reset();
+        //next.reset();
         return {{}, status::closed };
     } catch(...) {
         file_assert(false, "bad exception");
@@ -600,7 +600,7 @@ void TLS::tls_notify_close(status_message& output) {
     }
     output.m_response.append(close_record.serialise());
     output.m_status = status::closing;
-    next.reset();
+    //next.reset();
 }
 
 

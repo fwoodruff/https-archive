@@ -32,11 +32,13 @@ poll_context::poll_context() {
 }
 
 poll_context::~poll_context() {
+    logger << "closing poll context" << std::endl;
     close(m_epfd);
 }
 
 void poll_context::add_fd(const cppsocket& sock, event_var return_object, bool read_state, bool write_state) {
-    epoll_event event;
+    logger << "add fd" << read_state << write_state << std::endl;
+    epoll_event event {};
     event.events = ( read_state ? EPOLLIN : 0) | (write_state ? EPOLLOUT : 0);
     
     int r_fd = sock.get_native();
@@ -55,7 +57,8 @@ void poll_context::add_fd(const cppsocket& sock, event_var return_object, bool r
 }
 
 void poll_context::mod_fd(const cppsocket& sock, bool read_state, bool write_state) {
-    epoll_event event;
+    logger << "mod fd" << read_state << write_state << std::endl;
+    epoll_event event {};
     event.events = ( read_state ? EPOLLIN : 0) | (write_state ? EPOLLOUT : 0);
     int r_fd = sock.get_native();
     event.data.fd = r_fd;
@@ -67,6 +70,7 @@ void poll_context::mod_fd(const cppsocket& sock, bool read_state, bool write_sta
 }
 
 void poll_context::del_fd(const cppsocket& sock) {
+    logger << "del fd" << sock.get_native() << std::endl;
     if(epoll_ctl(m_epfd, EPOLL_CTL_DEL, sock.get_native(), nullptr) == -1) {
         logger << "errno: " << errno << std::endl;
         file_assert(false, "epoll del failed");
@@ -77,6 +81,7 @@ void poll_context::del_fd(const cppsocket& sock) {
 }
 
 std::vector<fpollfd> poll_context::get_events(bool do_timeout) {
+    logger << "get events" << do_timeout << std::endl;
     std::vector<fpollfd> events;
     std::vector<epoll_event> epoll_events;
     epoll_events.resize(MAX_SOCKETS);

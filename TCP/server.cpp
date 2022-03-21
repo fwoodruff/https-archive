@@ -110,11 +110,6 @@ server::server() {
     m_poller.add_fd(m_redirect_socket, static_fd::http_acceptor, true, false);
 
 
-    
-
-
-    
-
 
     // interthread/intersocket, need a way for server to initiate message.
     // server-wide pipe
