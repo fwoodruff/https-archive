@@ -59,22 +59,23 @@ namespace fbw {
 std::optional<tls_record> try_extract_record(ustring& input);
 
 
-// handler
 status_message TLS::handle(ustring input) noexcept {
-    m_input.append(input);
-    
+    file_assert(input.empty() ==  more_to_send, "flushing with input or no input no flush");
     file_assert(input.size() < 20000, "TLS handle input size too much");
     
-    status_message output;
-    
-    
     if(more_to_send) {
-        output =  generate_packet(1); // around 10kb per batch
-        return output;
+        return handle_flush();
+    } else {
+        return handle_input(std::move(input));
     }
-    file_assert(input.size() != 0, "reading empty string");
-    
-    output.m_status = status::read_write;
+}
+
+
+status_message TLS::handle_input(ustring input) noexcept {
+    m_input.append(input);
+
+    status_message output {.m_status = status::read_write};
+    //output.m_status = status::read_write;
     
     try {
         while(true) {
@@ -83,6 +84,9 @@ status_message TLS::handle(ustring input) noexcept {
                 break;
             }
             handle_record(std::move(*record), output);
+            if(more_to_send) {
+                break;
+            }
         }
     } catch(const ssl_error& e) {
 
@@ -93,20 +97,22 @@ status_message TLS::handle(ustring input) noexcept {
             
             file_assert(cipher_context != nullptr, "null cipher");
             file_assert(is_client_hello_done, "handshake done without hello");
-            r = cipher_context->encrypt(r); // this is breaking
+            r = cipher_context->encrypt(r);
             
         }
-        
         auto str = r.serialise();
-        
         return {str, status::closing };
     } catch(const std::out_of_range& e) {
-        //next.reset();
+        next.reset();
         return {{}, status::closed };
     } catch(...) {
         file_assert(false, "bad exception");
     }
     return output;
+}
+
+status_message TLS::handle_flush() noexcept {
+    return generate_packet(1); // around 10kb per batch
 }
 
 void TLS::handle_record(tls_record record, status_message& output) {
@@ -116,9 +122,7 @@ void TLS::handle_record(tls_record record, status_message& output) {
     if (record.m_contents.size() > TLS_record_size) {
         throw ssl_error("oversized record", AlertLevel::fatal, AlertDescription::record_overflow);
     }
-    
-    
-    
+
     if (is_change_cipher_spec_done) {
         record = cipher_context->decrypt(std::move(record));
     }
@@ -143,7 +147,6 @@ void TLS::handle_record(tls_record record, status_message& output) {
             throw ssl_error("bad record type", AlertLevel::fatal, AlertDescription::illegal_parameter);
             break;
     }
-    
 }
  
 void TLS::client_handshake(ustring handshake_record, status_message& output) {
@@ -164,7 +167,6 @@ void TLS::client_handshake(ustring handshake_record, status_message& output) {
             break;
     }
 }
-
 
 void TLS::handle_client_hello(const ustring& hello, status_message& output) {
     file_assert(hello.at(0) == 1, "handle_client_hello");
@@ -237,8 +239,6 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
     output.m_response.append(server_certificate().serialise());
     output.m_response.append(server_key_exchange().serialise());
     output.m_response.append(server_hello_done().serialise());
-    
-    
 }
 
 tls_record TLS::server_hello() {
@@ -272,8 +272,7 @@ tls_record TLS::server_certificate(){
     certificate_record.m_contents = {static_cast<uint8_t>(HandshakeType::certificate), 0,0,0, 0,0,0};
     
     const auto certs = der_cert_from_file(certificate_file);
-    
-    
+
     for (const auto& cert : certs) {
         ustring cert_header;
         cert_header.append({0,0,0});
@@ -282,8 +281,6 @@ tls_record TLS::server_certificate(){
         certificate_record.m_contents.append(cert);
     }
 
-    
-    
     
     write_int(certificate_record.m_contents.size()-4, &certificate_record.m_contents[1], 3);
     write_int(certificate_record.m_contents.size()-7, &certificate_record.m_contents[4], 3);
@@ -546,7 +543,7 @@ void TLS::server_handshake_finished(status_message& output) {
  */
 status_message TLS::generate_packet(int num_records) {
     file_assert(more_to_send == true, "more_to_send == true");
-    status_message output;
+    status_message output {};
     
     for(int i = 0; i < num_records; i++) {
         size_t small_record_size = std::clamp(size_t(randomgen.randgen64() % TLS_record_size), size_t(1), TLS_record_size);
@@ -574,7 +571,6 @@ status_message TLS::generate_packet(int num_records) {
     return output;
 }
 
-
 void TLS::client_application_data(const ustring& application_data, status_message& output) {
     if (is_client_hello_done == false or
         is_client_key_exchange_done == false or
@@ -584,10 +580,40 @@ void TLS::client_application_data(const ustring& application_data, status_messag
         throw ssl_error("handshake already done", AlertLevel::fatal, AlertDescription::unexpected_message);
     }
     
+    file_assert(app_out.m_response.empty(), "resetting output data before flushed");
+    file_assert( output.m_response.empty(), "overwriting non-empty output");
+    
     app_out = next->handle(application_data);
     send_byte_idx = 0;
     more_to_send = true;
-    output = TLS::generate_packet(10); // files over 100kb might not be returned in one go.
+
+    [[TODO]];
+    // remove from here
+    while(true) {
+        size_t small_record_size = std::clamp(size_t(randomgen.randgen64() % TLS_record_size), size_t(1), TLS_record_size);
+        size_t record_size = (randomgen.randgen64() % 10 != 0) ? TLS_record_size : small_record_size;
+        record_size = std::min(record_size, app_out.m_response.size() - send_byte_idx);
+        
+        tls_record out(ContentType::Application);
+        out.m_contents.append(&app_out.m_response[send_byte_idx],
+                              &app_out.m_response[send_byte_idx+record_size]);
+        out = cipher_context->encrypt(std::move(out));
+        output.m_response.append(out.serialise());
+        
+        send_byte_idx += record_size;
+        
+        if(send_byte_idx == app_out.m_response.size()) {
+            more_to_send = false;
+            send_byte_idx = 0;
+            output.m_status = app_out.m_status;
+            app_out.m_response.clear();
+            break;
+        }
+    }
+    // to here
+    
+    // uncomment here
+    //output = TLS::generate_packet(10); // files over 100kb might not be returned in one go.
 }
 
 void TLS::tls_notify_close(status_message& output) {
@@ -600,10 +626,8 @@ void TLS::tls_notify_close(status_message& output) {
     }
     output.m_response.append(close_record.serialise());
     output.m_status = status::closing;
-    //next.reset();
+    next.reset();
 }
-
-
 
 bool TLS::client_alert(const ustring& alert_message, status_message& output) {
     if(alert_message.size() != 2) {
@@ -624,7 +648,6 @@ bool TLS::client_alert(const ustring& alert_message, status_message& output) {
             throw ssl_error("unsupported alert", AlertLevel::fatal, AlertDescription::unexpected_message);
     }
 }
-
 
 void TLS::client_heartbeat(const ustring& heartbeat_message, status_message& output) {
     if(heartbeat_message.size() != 1 or heartbeat_message[0] != 0x01) {

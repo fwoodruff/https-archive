@@ -39,7 +39,7 @@
 #include <fstream>
 #include <chrono>
 #include <sstream>
-
+#include <thread>
 #include <variant>
 
 
@@ -81,8 +81,8 @@ server_socket get_listener_socket(std::string service) {
 
             listener = server_socket(p->ai_family, p->ai_socktype, p->ai_protocol);
             
-            int yes;
-            listener.setsockopt(SOL_SOCKET, SO_REUSEADDR, &(yes=1), sizeof(int));
+            int yes = 1;
+            listener.setsockopt(SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
             listener.bind(p->ai_addr, p->ai_addrlen);
         } catch (const std::system_error& e ) {
             continue;
@@ -108,8 +108,16 @@ server::server() {
     
     m_poller.add_fd(m_https_socket, static_fd::https_acceptor, true, false);
     m_poller.add_fd(m_redirect_socket, static_fd::http_acceptor, true, false);
+    can_accept_old = true;
 
-
+    unsigned nthreads = std::thread::hardware_concurrency();
+    nthreads = std::clamp(nthreads, 1u, static_cast<unsigned int> (MAX_SOCKETS));
+    for(unsigned i = 0; i < nthreads - 1; i++) {
+        thread_vec.emplace_back(&server::server_thread_task, this);
+    }
+    
+    
+    
 
     // interthread/intersocket, need a way for server to initiate message.
     // server-wide pipe
@@ -141,6 +149,93 @@ server::server() {
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
+void server::do_task(fpollfd event) {
+    std::visit(overloaded {
+        [&](node_ptr arg) {
+            file_assert(arg != connections.end(), "fd = end");
+            arg->handle_connection(event, loop_time);
+
+            if(arg->activity ==  status::closed) {
+                std::lock_guard lk(mut);
+                connections.erase(arg);
+            } else {
+                bool poll_for_read  = (arg->activity ==  status::read_write);
+                bool poll_for_write = arg->activity != status::closed and (!arg->write_buffer.empty() or
+                                      arg->activity == status::flush);
+                
+                if(arg->old_read != poll_for_read or arg->old_write != poll_for_write)
+                {
+                    std::lock_guard lk(mut);
+                    m_poller.mod_fd(arg->m_socket, poll_for_read, poll_for_write);
+                }
+                arg->old_read = poll_for_read;
+                arg->old_write = poll_for_write;
+            }
+
+        },
+        [&](static_fd arg) {
+            try {
+                switch (arg) {
+                    case static_fd::https_acceptor:
+                        accept_connection(m_https_socket,
+                                          loop_time,
+                                        [] {
+                            auto x = std::make_unique<fbw::TLS>();
+                            x->next = std::make_unique<fbw::HTTP>(fbw::rootdir, false);
+                            return x;
+                        });
+                        break;
+                    case static_fd::http_acceptor:
+                        accept_connection(m_redirect_socket,
+                                          loop_time,
+                                    [] {
+                            return std::make_unique<fbw::HTTP>(fbw::rootdir, true);
+                        });
+                        break;
+                    default:
+                        break;
+                }
+            } catch(const std::runtime_error& e) {
+                logger << e.what() << std::endl;
+            }
+        }
+    }, event.node);
+}
+
+bool server::get_task() {
+    unsigned idx;
+    {
+        std::lock_guard lk(mut);
+        idx = events_started;
+        if(idx == loop_events.size()) {
+            threads_finished++;
+            return false;
+        } else {
+            events_started++;
+        }
+    }
+    do_task(loop_events[idx]);
+    return true;
+}
+
+void server::server_thread_task() {
+    while(true) {
+        {
+            std::unique_lock<std::mutex> lk(mut);
+            pool_cv.wait(lk, [&]{ return threads_to_start != 0 or done;});
+            if(done) {
+                break;
+            }
+            threads_to_start--;
+        }
+        pool_cv.notify_one();
+        while(get_task()) { }
+        loop_cv.notify_one();
+        
+    }
+    pool_cv.notify_one();
+}
+
 
 static int loop_index = 0;
 
@@ -148,58 +243,39 @@ void server::serve_some() {
     loop_index++;
     logger << "loop count: " << loop_index << std::endl;
     
-    bool can_accept = m_connections.size() < static_cast<size_t>(MAX_SOCKETS - 11);
-    m_poller.mod_fd(m_https_socket, can_accept, false);
-    m_poller.mod_fd(m_redirect_socket, can_accept, false);
-
-    const auto loop_time = steady_clock::now();
-    
-    
-
-    const auto events = m_poller.get_events(!m_connections.empty());
-
-
-    for (const auto& event : events) {
-        std::visit(overloaded {
-            [&](node_ptr arg) {
-                file_assert(arg != m_connections.end(), "fd = end");
-                if(arg->handle_connection(event, loop_time)) {
-                    m_connections.erase(arg);
-                }
-            },
-            [&](static_fd arg) {
-                try {
-                    switch (arg) {
-                        case static_fd::https_acceptor:
-                            accept_connection(m_https_socket,
-                                              loop_time,
-                                            [] {
-                                auto x = std::make_unique<fbw::TLS>();
-                                x->next = std::make_unique<fbw::HTTP>(fbw::rootdir, false);
-                                return x;
-                            });
-                            break;
-                        case static_fd::http_acceptor:
-                            accept_connection(m_redirect_socket,
-                                              loop_time,
-                                        [] {
-                                return std::make_unique<fbw::HTTP>(fbw::rootdir, true);
-                            });
-                            break;
-                        default:
-                            break;
-                    }
-                } catch(const std::runtime_error& e) {
-                    logger << e.what() << std::endl;
-                }
-            }
-        }, event.node);
+    bool can_accept = connections.size() < static_cast<size_t>(MAX_SOCKETS - 11);
+    if(can_accept_old != can_accept) {
+        m_poller.mod_fd(m_https_socket, can_accept, false);
+        m_poller.mod_fd(m_redirect_socket, can_accept, false);
+        can_accept_old = can_accept;
     }
     
-    const auto sentinel_stale = find_if_not(m_connections.crbegin(), m_connections.crend(),
+    
+    loop_time = steady_clock::now();
+    loop_events = m_poller.get_events(!connections.empty());
+    
+    events_started = 0;
+    threads_finished = 0;
+    
+
+    {
+        std::lock_guard<std::mutex> lk(mut);
+        threads_to_start = thread_vec.size();
+    }
+    pool_cv.notify_one();
+    
+    while(get_task()) {}
+    
+    {
+        std::unique_lock<std::mutex> lk(mut);
+        loop_cv.wait(lk, [&]{ return threads_finished == thread_vec.size()+1;});
+    }
+
+    
+    const auto sentinel_stale = find_if_not(connections.crbegin(), connections.crend(),
                                    [&](const auto& elem){
         return loop_time - elem.m_time_set > 5s; });
-    m_connections.erase(sentinel_stale.base(), m_connections.end());
+    connections.erase(sentinel_stale.base(), connections.end());
 }
 
 
@@ -215,11 +291,22 @@ void server::accept_connection(const server_socket& sock, tp loop_time,
     auto skt = sock.accept((sockaddr *) &cli_addr, &sin_len);
     skt.fcntl(F_SETFL, O_NONBLOCK);
 
-    m_connections.emplace_front(loop_time, receiver_stack(), &m_poller, std::move(skt));
-    m_poller.add_fd(m_connections.front().m_socket, m_connections.begin(), true, false);
+    std::lock_guard lk(mut);
+    connections.emplace_front(loop_time, receiver_stack(), &m_poller, std::move(skt));
+    m_poller.add_fd(connections.front().m_socket, connections.begin(), true, false);
+
 }
 
 server::~server() {
+    
+    {
+        std::lock_guard lk(mut);
+        done = true;
+    }
+    pool_cv.notify_one();
+    for(auto& th : thread_vec) {
+        th.join();
+    }
     logger << "~server()" << std::endl;
 }
 

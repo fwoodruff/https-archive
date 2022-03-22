@@ -64,7 +64,6 @@ connection::~connection() {
 
 
 void connection::send_bytes_over_network() {
-    logger << "sending bytes over net" << std::endl;
     switch(activity) {
         case status::read_write:
         case status::flush:
@@ -79,12 +78,8 @@ void connection::send_bytes_over_network() {
     if(write_buffer.empty()) {
         logger << "sending empty buffer\n";
     }
-
-    
-
     
     auto bytes = m_socket.send(write_buffer.data(), write_buffer.size(), MSG_NOSIGNAL);
-    logger << "did send: " << bytes << std::endl;
     
     file_assert(bytes <= write_buffer.size(), "bytes <= write_buffer.size()");
     if(bytes == 0) {
@@ -101,10 +96,10 @@ void connection::send_bytes_over_network() {
         activity = status::closed;
     }
 
-    if(write_buffer.size() > 2000000) {
+    [[TODO]];
+    if(write_buffer.size() > 20000000) {
         throw std::runtime_error("too much requested");
     }
-    logger << "end of send bytes" << std::endl;
 }
 
 ustring connection::receive_bytes_from_network() {
@@ -125,14 +120,10 @@ ssize_t connection::queue_bytes_for_write(ustring bytes) {
 }
 
 bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanoseconds> loop_time) {
-
-    
     try {
         file_assert(primary_receiver != nullptr, "bad primary receiver");
         switch(activity) {
             case status::read_write:
-                logger << "read write\n";
-            //case status::dormant:
                 file_assert(event.read or event.write, "shouldn't be polled if nothing to read or write");
                 if(event.read) {
                     ustring out = receive_bytes_from_network();
@@ -144,11 +135,11 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                     send_bytes_over_network();
                 }
                 break;
+            //case status::dormant:
             case status::flush:
             {
                 file_assert(!event.read, "cannot read while flushing buffer");
                 file_assert(event.write, "writing to unwriteable socket");
-                logger << "flush\n";
                 auto st_msg = primary_receiver->handle({});
                 activity = st_msg.m_status;
                 write_buffer.append(st_msg.m_response);
@@ -162,19 +153,14 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                 break;
             
             case status::closing:
-                logger << "closing\n";
                 file_assert(!event.read, "closing socket polled for read");
-                if(!event.write) {
-                    throw std::runtime_error("errm");
-                }
+                file_assert(event.write, "closing socket polled and not for write");
                 send_bytes_over_network();
-                
-                
                 break;
             case status::closed:
                 file_assert(false, "closed socket polled");
             default:
-                file_assert(false, "ub");
+                file_assert(false, "unreachable");
                 
         }
     } catch(const std::runtime_error& e) {
@@ -185,48 +171,15 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
         file_assert(false, "uncaught exception in handle_connection");
     }
     
-    if(activity ==  status::closing and write_buffer.empty()) {
+    if(activity == status::closing and write_buffer.empty()) {
         activity = status::closed;
     }
-    
 
     m_time_set = loop_time;
-    
-
-    
-    bool poll_for_read  = (activity ==  status::read_write);
-    bool poll_for_write = activity != status::closed and (!write_buffer.empty() or
-                          activity == status::flush);
-    
-    logger << "read: " << (activity ==  status::read_write) << std::endl;
-    logger << "buffer:" << write_buffer.empty()  << std::endl;
-    logger << "activity:" << (activity != status::closed) << std::endl;
-    logger << "flush: " << (activity == status::flush) << std::endl;
-    
-    
-    // fix me
-    context->mod_fd(m_socket, poll_for_read, poll_for_write);
-    
-    
-    if(activity == status::closed) {
-        file_assert(!poll_for_read, "polling for read on about to be deleted connection");
-        file_assert(!poll_for_write, "polling for write on about to be deleted connection");
-    }
-    
-    if(activity == status::closing) {
-        file_assert(!poll_for_read, "polling for read on closing socket");
-        file_assert(poll_for_write, "not polling for write on closing socket");
-    }
     
     return activity == status::closed;
 
     
 }
-
-
-
-
-
-
 
 } // namespace fbw

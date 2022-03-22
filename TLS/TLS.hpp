@@ -26,25 +26,19 @@ class TLS final : public receiver {
     std::array<uint8_t,32> m_server_random {};
     // session ID
     unsigned short cipher {};
-    
-    
     bool is_client_hello_done = false;
     bool is_client_key_exchange_done = false;
     bool is_change_cipher_spec_done = false;
     bool is_client_handshake_finished_done = false;
-    
     std::array<uint8_t,32> client_public_key {};
     std::array<uint8_t,32> server_private_key_ephem {};
-    
     std::unique_ptr<hash_base> handshake_hasher = nullptr;;
-    
     std::array<uint8_t,48> master_secret {};
-
-    
     std::unique_ptr<cipher_base> cipher_context = nullptr;
-    
     std::unique_ptr<const hash_base> hasher_factory = nullptr;
-    
+
+    status_message handle_input(ustring input) noexcept;
+    status_message handle_flush() noexcept;
     
     void handle_record(tls_record record, status_message& output);
     void client_handshake(ustring handshake_message, status_message& output);

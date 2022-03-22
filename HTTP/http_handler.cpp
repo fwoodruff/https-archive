@@ -68,6 +68,9 @@ void handle_POST(std::string header, std::string body) {
 std::string file_to_http(const std::string& rootdir, std::string filename) {
     constexpr time_t day = 24*60*60;
     
+    std::transform(filename.begin(), filename.end(), filename.begin(),
+        [](unsigned char c){ return std::tolower(c); });
+    
     if( filename == "/") {
         filename = "/index.html";
     }

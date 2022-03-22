@@ -33,7 +33,6 @@ int cppsocket::get_native() const {
 }
 
 cppsocket::~cppsocket() {
-    logger << "close socket" << std::endl;
     if(m_fd != -1) {
         ::close(m_fd);
     } else {
@@ -90,7 +89,6 @@ client_socket server_socket::accept(sockaddr * addr, socklen_t *addrlen) const {
         }
         throw std::system_error(errno, std::generic_category());
     }
-    logger << "sock: " << sock <<std::endl;
     return client_socket(sock);
 }
 void client_socket::connect( const sockaddr *addr, socklen_t addrlen) const {
@@ -125,7 +123,6 @@ size_t cppsocket::recv(void *buf, size_t len, int flags) const {
     file_assert(m_fd != -1, "bad recv on socket");
     
     const ssize_t bytes = ::recv(m_fd, buf, len, flags);
-    logger << "recv" << bytes << std::endl;
     if(bytes == -1) {
         throw std::system_error(errno, std::generic_category());
     }

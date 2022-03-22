@@ -6,7 +6,7 @@
 //
 
 #include "chacha20poly1305.hpp"
-<<<<<<< HEAD
+
 #include "global.hpp"
 #include "keccak.hpp"
 #include "bignum.hpp"
@@ -327,5 +327,4 @@ tls_record ChaCha20_Poly1305::decrypt(tls_record record) {
 
     
 } // namespace fbw::cha
-=======
->>>>>>> parent of fd7d7e5 (started on ChaCha20 functionality)
+

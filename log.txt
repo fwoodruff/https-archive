@@ -1,9 +1,21 @@
-close socket
 bad socket
-close socket
 bad socket
-close socket
 bad socket
-close socket
 bad socket
 loop count: 1
+bad socket
+bad socket
+loop count: 2
+loop count: 3
+loop count: 4
+loop count: 5
+loop count: 6
+loop count: 7
+loop count: 8
+loop count: 9
+loop count: 10
+loop count: 11
+loop count: 12
+exception
+closing connection
+loop count: 13
