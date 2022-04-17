@@ -16,6 +16,7 @@
 #include <fstream>
 #include <sstream>
 #include <vector>
+#include <mutex>
 
 namespace fbw {
 
