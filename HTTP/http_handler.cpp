@@ -50,6 +50,7 @@ std::string respond(const std::string& rootdirectory, std::string header, std::s
  Here we are just sanitising the inputs and putting them in a file
  */
 void handle_POST(std::string header, std::string body) {
+    (void)header;
     std::ofstream fout(rootdir+"/final.html", std::ios_base::app);
     body = std::regex_replace(body, std::regex("username="), "username: ");
     body = std::regex_replace(body, std::regex("&password="), ", password: ");

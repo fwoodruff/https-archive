@@ -55,9 +55,11 @@ connection::~connection() {
         try {
             context->del_fd(m_socket);
         } catch(const std::system_error& e) {
-            file_assert(false, e.what());
+            logger << e.what();
+            assert(false);
         }
     }
+    primary_receiver = nullptr;
 }
 
 
@@ -71,9 +73,10 @@ void connection::send_bytes_over_network() {
         case status::closing:
             break;
         case status::closed:
-            file_assert(false, "cannot send bytes over closed connection");
+            assert(false);
             return;
     }
+    
 
     if(write_buffer.empty()) {
         logger << "sending empty buffer\n";
@@ -81,7 +84,7 @@ void connection::send_bytes_over_network() {
     
     auto bytes = m_socket.send(write_buffer.data(), write_buffer.size(), MSG_NOSIGNAL);
     
-    file_assert(bytes <= write_buffer.size(), "bytes <= write_buffer.size()");
+    assert(bytes <= write_buffer.size());
     if(bytes == 0) {
         logger << "sent no bytes\n" << std::flush;
     }
@@ -96,8 +99,7 @@ void connection::send_bytes_over_network() {
         activity = status::closed;
     }
 
-    [[TODO]];
-    if(write_buffer.size() > 20000000) {
+    if(write_buffer.size() > 2000000) {
         throw std::runtime_error("too much requested");
     }
 }
@@ -114,17 +116,13 @@ ustring connection::receive_bytes_from_network() {
     return out;
 }
 
-ssize_t connection::queue_bytes_for_write(ustring bytes) {
-    write_buffer.append(bytes);
-    return write_buffer.size();
-}
 
 bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanoseconds> loop_time) {
     try {
-        file_assert(primary_receiver != nullptr, "bad primary receiver");
+        assert(primary_receiver != nullptr);
         switch(activity) {
             case status::read_write:
-                file_assert(event.read or event.write, "shouldn't be polled if nothing to read or write");
+                assert(event.read or event.write);
                 if(event.read) {
                     ustring out = receive_bytes_from_network();
                     auto st_msg = primary_receiver->handle(std::move(out));
@@ -135,11 +133,11 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                     send_bytes_over_network();
                 }
                 break;
-            //case status::dormant:
             case status::flush:
             {
-                file_assert(!event.read, "cannot read while flushing buffer");
-                file_assert(event.write, "writing to unwriteable socket");
+                assert(!event.read);
+                assert(event.write);
+                
                 auto st_msg = primary_receiver->handle({});
                 activity = st_msg.m_status;
                 write_buffer.append(st_msg.m_response);
@@ -153,14 +151,14 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                 break;
             
             case status::closing:
-                file_assert(!event.read, "closing socket polled for read");
-                file_assert(event.write, "closing socket polled and not for write");
+                assert(!event.read);
+                assert(event.write);
                 send_bytes_over_network();
                 break;
             case status::closed:
-                file_assert(false, "closed socket polled");
+                assert(false);
             default:
-                file_assert(false, "unreachable");
+                assert(false);
                 
         }
     } catch(const std::runtime_error& e) {
@@ -168,7 +166,7 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
         logger << e.what() << std::endl;
         activity = status::closed;
     } catch(...) {
-        file_assert(false, "uncaught exception in handle_connection");
+        assert(false);
     }
     
     if(activity == status::closing and write_buffer.empty()) {

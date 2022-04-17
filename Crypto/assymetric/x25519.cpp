@@ -141,7 +141,7 @@ constexpr point256 point_add(const point256& P, const point256& Q, const point25
 }
 
 
-// finds point R on the line tangent to point P on the curve
+// finds point R on the line tangent to point P on the curve, reflected in x-axis
 constexpr point256 point_double(const point256& P) {
     ct_u256 point_xz = REDC(P.xcoord * P.affine);
     ct_u256 point_xx = REDC(P.xcoord * P.xcoord);

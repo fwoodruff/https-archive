@@ -18,17 +18,16 @@
 
 namespace fbw::aes {
 
-AES_CBC_SHA::AES_CBC_SHA(size_t key_size) : server_write_round_keys({}),
+AES_CBC_SHA::AES_CBC_SHA() : server_write_round_keys({}),
                                             client_write_round_keys({}),
                                             server_MAC_key({}),
                                             client_MAC_key({}),
-                                            m_key_size(key_size),
                                             seqno_server(0),
                                             seqno_client(0) { }
 
 
 void AES_CBC_SHA::set_key_material(ustring expanded_master)  {
-    file_assert(expanded_master.size() >= 104, "insufficient material in set_key");
+    assert(expanded_master.size() >= 104);
 
     auto client_write_key = std::vector<uint8_t>(16,0);
     auto server_write_key = std::vector<uint8_t>(16,0);
@@ -53,7 +52,7 @@ ustring pad_message(ustring message) {
     const auto blocksize = 16;
     const auto padmax = 256;
     
-    file_assert(padmax > blocksize and padmax % blocksize == 0, "misaligned padding");
+    assert(padmax > blocksize and padmax % blocksize == 0);
     
     // randomises the padding length
     const auto min_padded_message_size = ((message.size() / blocksize)+1)* blocksize;
@@ -64,11 +63,11 @@ ustring pad_message(ustring message) {
 
     const auto padding_checked = padded_message_size - message.size();
     
-    file_assert(padded_message_size > message.size(), "padded_message_size > message.size()");
-    file_assert(padding_checked < padmax, "padding_checked < padmax"); // this has actually fired
+    assert(padded_message_size > message.size());
+    assert(padding_checked < padmax);
     const uint8_t padding = padding_checked;
     message.append(padding, padding-1);
-    file_assert(message.size() % blocksize == 0, "message.size() % blocksize == 0");
+    assert(message.size() % blocksize == 0);
     return message;
 }
 
@@ -122,7 +121,7 @@ tls_record AES_CBC_SHA::decrypt(tls_record record) {
     std::array<uint8_t, 16> record_IV {};
     constexpr auto blocksize = record_IV.size();
     
-    file_assert(record.m_contents.size() >= 16, "bad record size");
+    assert(record.m_contents.size() >= 16);
     std::copy(&*record.m_contents.begin(),&record.m_contents[blocksize], record_IV.begin() );
 
     

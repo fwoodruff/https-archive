@@ -60,7 +60,7 @@ static void inc32(aes_block& block) {
     val = AES_GET_BE32(&block[block.size() - 4]);
     val++;
     AES_PUT_BE32(&block[block.size() - 4], val);
-    file_assert(val != uint32_t(-1), "2^64 increments should be infeasible");
+    assert(val != uint32_t(-1));
 }
 
 
@@ -163,33 +163,16 @@ static void ghash(const uint8_t *h, const uint8_t *x, size_t xlen, uint8_t *y) {
 }
 
 
-static void aes_gctr(roundkey aesk, aes_block cb, const uint8_t *x, size_t xlen, uint8_t *y)
-{
+static void aes_gctr(roundkey aesk, aes_block cb, const uint8_t *x, size_t xlen, uint8_t *y) {
     size_t last;
-    
-    
-    //const uint8_t *xpos = x;
-    //uint8_t *ypos = y;
 
     if (xlen == 0)
         return;
-
-    
-
     auto roundedx = (xlen &~15u);
-    
-    
-
     for (size_t i = 0; i < roundedx; i += AES_BLOCK_SIZE) {
-        
-        
         auto yy = aes_encrypt(cb, aesk);
-        
-
         std::transform(yy.begin(), yy.end(), &x[i], yy.begin(), std::bit_xor<uint8_t>());
         memcpy(&y[i], &yy[0], AES_BLOCK_SIZE);
-        
-
         inc32(cb);
     }
 
@@ -202,11 +185,7 @@ static void aes_gctr(roundkey aesk, aes_block cb, const uint8_t *x, size_t xlen,
     }
 }
 
-
-
-
-static aes_block aes_gcm_prepare_j0(const ustring& iv, const aes_block& H)
-{
+static aes_block aes_gcm_prepare_j0(const ustring& iv, const aes_block& H) {
     uint8_t len_buf[16];
     
     aes_block J0 {};
@@ -268,15 +247,11 @@ std::pair<ustring,ustring> aes_gcm_ae(const roundkey& rk, const ustring& iv,
     crypt.resize(plain.size());
     aes_gcm_gctr(rk, J0, plain.data(), plain.size(), crypt.data());
     
-    
     auto S = aes_gcm_ghash(H, aad, crypt.data(), crypt.size());
-    
     
     tag.resize(S.size());
     aes_gctr(rk, J0, S.data(), S.size(), tag.data());
-    
-    
-    
+
     return {crypt, tag};
 }
 
@@ -306,9 +281,9 @@ ustring aes_gcm_ad(roundkey rk, ustring iv,
 }
 
 
-ustring aes_gmac(roundkey key, const ustring& iv,
+[[maybe_unused]] ustring aes_gmac(roundkey key, const ustring& iv,
          const ustring& aad) {
-    file_assert(false, "function should be inaccessible");
+    assert(false);
     auto [_, tag] = aes_gcm_ae(key, iv, {}, aad);
     return tag;
 }
@@ -369,8 +344,8 @@ tls_record AES_128_GCM_SHA256::encrypt(tls_record record) {
     
     auto [ciphertext, auth_tag] = aes_gcm_ae(server_write_round_keys, iv, record.m_contents, additional_data);
     
-    file_assert(auth_tag.size() == 16, "no auth tag");
-    file_assert(sequence_no.size() == 8, "no seq no");
+    assert(auth_tag.size() == 16);
+    assert(sequence_no.size() == 8);
     
     record.m_contents = sequence_no + ciphertext + auth_tag;
     return record;
@@ -379,7 +354,7 @@ tls_record AES_128_GCM_SHA256::encrypt(tls_record record) {
 tls_record AES_128_GCM_SHA256::decrypt(tls_record record) {
     
     if(record.m_contents.size() < 24) {
-        throw ssl_error("short record", AlertLevel::fatal, AlertDescription::decrypt_error);
+        throw ssl_error("short record IV HMAC", AlertLevel::fatal, AlertDescription::decrypt_error);
     }
     
     ustring sequence;
@@ -394,8 +369,8 @@ tls_record AES_128_GCM_SHA256::decrypt(tls_record record) {
     ustring auth_tag;
     auth_tag.append({record.m_contents.end()-16, record.m_contents.end()});
     
-    file_assert(auth_tag.size() == 16, "bad auth tag");
-    file_assert(explicit_IV.size() == 8,  "bad explicit_IV");
+    assert(auth_tag.size() == 16);
+    assert(explicit_IV.size() == 8);
     
     ustring additional_data;
     additional_data.append(sequence);
@@ -412,41 +387,6 @@ tls_record AES_128_GCM_SHA256::decrypt(tls_record record) {
     return record;
 }
 
-
-
-void AES_128_GCM_SHA256::test() {
-    
-    
-    std::vector<uint8_t> KEY = {0xAD, 0x7A, 0x2B, 0xD0, 0x3E, 0xAC, 0x83, 0x5A, 0x6F, 0x62, 0x0F, 0xDC, 0xB5, 0x06, 0xB3, 0x45 };
-    auto aesk = aes_key_schedule(KEY);
-    
-    // plaintext:
-    ustring plain = { 0x08, 0x00, 0x0F, 0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B, 0x1C,
-                      0x1D, 0x1E, 0x1F, 0x20, 0x21, 0x22, 0x23, 0x24, 0x25, 0x26, 0x27, 0x28, 0x29, 0x2A, 0x2B, 0x2C,
-        0x2D, 0x2E, 0x2F, 0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x3A, 0x00, 0x02 };
-    
-    // Additional:
-    ustring additional { 0xD6, 0x09, 0xB1, 0xF0, 0x56, 0x63, 0x7A, 0x0D, 0x46, 0xDF, 0x99, 0x8D, 0x88, 0xE5, 0x2E, 0x00,
-        0xB2, 0xC2, 0x84, 0x65, 0x12, 0x15, 0x35, 0x24, 0xC0, 0x89, 0x5E, 0x81 };
-    
-    ustring IV { 0x12, 0x15, 0x35, 0x24, 0xC0, 0x89, 0x5E, 0x81, 0xB2, 0xC2, 0x84, 0x65 };
-    
-    // produces:
-    // ciphertext:
-    ustring ciphertext { 0x70, 0x1A, 0xFA, 0x1C, 0xC0, 0x39, 0xC0, 0xD7, 0x65, 0x12, 0x8A, 0x66, 0x5D, 0xAB, 0x69, 0x24,
-            0x38, 0x99, 0xBF, 0x73, 0x18, 0xCC, 0xDC, 0x81, 0xC9, 0x93, 0x1D, 0xA1, 0x7F, 0xBE, 0x8E, 0xDD,
-            0x7D, 0x17, 0xCB, 0x8B, 0x4C, 0x26, 0xFC, 0x81, 0xE3, 0x28, 0x4F, 0x2B, 0x7F, 0xBA, 0x71, 0x3D };
-    
-    //ustring plain2 = aes_gcm_ad(aesk, IV, ciphertext, additional, taga);
-    
-
-    auto [cipher, tag] = aes_gcm_ae(aesk, IV, plain, additional);
-    
-
-    ustring plain_new = aes_gcm_ad(aesk, IV, ciphertext, additional, tag);
-    
-    
-}
 
 
 

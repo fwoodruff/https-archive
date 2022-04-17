@@ -27,6 +27,8 @@ enum class status : unsigned {
      */
 };
 
+
+
 struct status_message {
     ustring m_response;
     status m_status;

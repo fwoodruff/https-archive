@@ -31,7 +31,7 @@ void xor_lane(std::array<uint8_t, 200>& state,  int x, int y, uint64_t val) noex
 keccak_sponge::keccak_sponge(size_t capacity_) noexcept {
     capacity = capacity_;
     rate = 1600 - capacity;
-    file_assert(rate % 8 == 0 and capacity < 1600, "bad keccak rate");
+    assert(rate % 8 == 0 and capacity < 1600);
     state = {0};
     rate_in_bytes = rate/8;
     block_size = 0;
@@ -53,13 +53,13 @@ void keccak_sponge::absorb(const uint8_t* const input, size_t inputByteLen) noex
             keccak_F1600_state_permute(state);
             idx = 0;
         }
-        file_assert(idx < 200, "keccak absorb");
+        assert(idx < 200);
         state[idx++] ^= input[--inputByteLen];
     }
 }
 
 void keccak_sponge::absorb(const char* const input, size_t inputByteLen) noexcept {
-    file_assert(absorb_phase, "keccak used in wrong phase");
+    assert(absorb_phase);
     if(!inputByteLen) return;
     while(inputByteLen > 0) {
         if(idx==rate_in_bytes) {
@@ -74,7 +74,7 @@ void keccak_sponge::absorb(const char* const input, size_t inputByteLen) noexcep
 
 void keccak_sponge::squeeze(uint8_t* const output, size_t outputByteLen) noexcept {
     if(absorb_phase) {
-        file_assert(idx < 200, "keccak squeeze");
+        assert(idx < 200);
         state[idx] ^= 0x1F;
         state[rate_in_bytes-1] ^= 0x80;
         keccak_F1600_state_permute(state);
@@ -92,7 +92,7 @@ void keccak_sponge::squeeze(uint8_t* const output, size_t outputByteLen) noexcep
 
 void keccak_sponge::squeeze(char* const output, size_t outputByteLen) noexcept {
     if(absorb_phase) {
-        file_assert(idx < 200, "keccak squeeze");
+        assert(idx < 200);
         state[idx] ^= 0x1F;
         state[rate_in_bytes-1] ^= 0x80;
         keccak_F1600_state_permute(state);
@@ -110,7 +110,7 @@ void keccak_sponge::squeeze(char* const output, size_t outputByteLen) noexcept {
 
 
 uint64_t ROL64(uint64_t a, uint64_t offset) noexcept {
-    file_assert(offset<64, "ROL64");
+    assert(offset<64);
     return (a<<offset)^(a>>(64-offset));
 }
 
@@ -119,7 +119,7 @@ uint64_t read_lane(const std::array<uint8_t, 200>& state, int x, int y) noexcept
     size_t addr = 8*(x + 5*y);
     for(int i=7; i>=0; --i) {
         out <<= 8;
-        file_assert(addr+i < 200, "read_lane");
+        assert(addr+i < 200);
         out |= state[addr + i];
     }
     return out;
@@ -129,7 +129,7 @@ void write_lane(std::array<uint8_t, 200>& state,  int x, int y, uint64_t val) no
     const size_t addr = 8*(x + 5*y);
     uint64_t mask = 0xffULL;
     for(int i=0; i<8; i++) {
-        file_assert(addr+i < 200, "write_lane");
+        assert(addr+i < 200);
         state[addr+i] = (val & mask) >> (8*i);
         mask <<= 8;
     }
@@ -139,7 +139,7 @@ void xor_lane(std::array<uint8_t, 200>& state,  int x, int y, uint64_t val) noex
     const size_t addr = 8*(x + 5*y);
     uint64_t mask = 0xffULL;
     for(int i=0; i<8; i++) {
-        file_assert(addr+i < 200, "write_lane");
+        assert(addr+i < 200);
         state[addr+i] ^= (val & mask) >> (8*i);
         mask <<= 8;
     }

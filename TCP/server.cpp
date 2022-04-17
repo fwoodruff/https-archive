@@ -78,9 +78,7 @@ server_socket get_listener_socket(std::string service) {
 
     for(p = ai; p != nullptr; p = p->ai_next) {
         try {
-
             listener = server_socket(p->ai_family, p->ai_socktype, p->ai_protocol);
-            
             int yes = 1;
             listener.setsockopt(SOL_SOCKET, SO_REUSEADDR, &yes, sizeof(int));
             listener.bind(p->ai_addr, p->ai_addrlen);
@@ -103,11 +101,16 @@ server_socket get_listener_socket(std::string service) {
  The service is used to infer the correct port number
  */
 server::server() {
+    
     m_https_socket = get_listener_socket("https");
+   
     m_redirect_socket = get_listener_socket("http");
+    
     
     m_poller.add_fd(m_https_socket, static_fd::https_acceptor, true, false);
     m_poller.add_fd(m_redirect_socket, static_fd::http_acceptor, true, false);
+    
+    
     can_accept_old = true;
 
     unsigned nthreads = std::thread::hardware_concurrency();
@@ -115,17 +118,10 @@ server::server() {
     for(unsigned i = 0; i < nthreads - 1; i++) {
         thread_vec.emplace_back(&server::server_thread_task, this);
     }
-    
-    
-    
 
     // interthread/intersocket, need a way for server to initiate message.
-    // server-wide pipe
-    // write_more and await_pipe maps, to 'add' those events to active.
-    // connection should be a shared_ptr and maps should be weak pointers.
-    // if write_more not empty, don't block on poll.
-    // wakeups could be spurious.
 }
+
 
 /*
  This is the main program loop, accepting and handling connections.
@@ -145,23 +141,23 @@ server::server() {
 
 
 
-
 template<class... Ts> struct overloaded : Ts... { using Ts::operator()...; };
 template<class... Ts> overloaded(Ts...) -> overloaded<Ts...>;
 
 void server::do_task(fpollfd event) {
     std::visit(overloaded {
         [&](node_ptr arg) {
-            file_assert(arg != connections.end(), "fd = end");
+            assert(arg != connections.end());
+            
             arg->handle_connection(event, loop_time);
 
             if(arg->activity ==  status::closed) {
                 std::lock_guard lk(mut);
                 connections.erase(arg);
+                
             } else {
                 bool poll_for_read  = (arg->activity ==  status::read_write);
-                bool poll_for_write = arg->activity != status::closed and (!arg->write_buffer.empty() or
-                                      arg->activity == status::flush);
+                bool poll_for_write = !arg->write_buffer.empty() or arg->activity == status::flush;
                 
                 if(arg->old_read != poll_for_read or arg->old_write != poll_for_write)
                 {
@@ -294,7 +290,6 @@ void server::accept_connection(const server_socket& sock, tp loop_time,
     std::lock_guard lk(mut);
     connections.emplace_front(loop_time, receiver_stack(), &m_poller, std::move(skt));
     m_poller.add_fd(connections.front().m_socket, connections.begin(), true, false);
-
 }
 
 server::~server() {

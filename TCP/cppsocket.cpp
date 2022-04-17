@@ -34,22 +34,18 @@ int cppsocket::get_native() const {
 
 cppsocket::~cppsocket() {
     if(m_fd != -1) {
-        ::close(m_fd);
-    } else {
-        logger << "bad socket" << std::endl;
-    }
+        int err = ::close(m_fd);
+        assert(err == 0);
+    } // moved from otherwise
 };
 
 
 cppsocket::cppsocket() noexcept : m_fd(-1) { }
 
-cppsocket::cppsocket(int _fd) noexcept :
-m_fd(_fd) {
-}
+cppsocket::cppsocket(int _fd) noexcept : m_fd(_fd) {}
 
 cppsocket::cppsocket(int domain, int type, int protocol) :
-    cppsocket(::socket(domain, type, protocol)) {
-}
+    cppsocket(::socket(domain, type, protocol)) {}
 
 cppsocket::cppsocket(cppsocket&& other) noexcept {
     *this = std::move(other);
@@ -61,10 +57,10 @@ cppsocket& cppsocket::operator=(cppsocket&& other) noexcept {
 }
        
 client_socket server_socket::accept(sockaddr * addr, socklen_t *addrlen) const {
-    file_assert(m_fd != -1, "bad accept socket");
+    assert(m_fd != -1);
     const fd_t sock = ::accept(m_fd, addr, addrlen);
     if(sock == -1) {
-        static_assert(EAGAIN == EWOULDBLOCK, "bad errno constants");
+        static_assert(EAGAIN == EWOULDBLOCK);
         switch (errno) {
             //case EAGAIN:
             case EWOULDBLOCK:
@@ -83,34 +79,34 @@ client_socket server_socket::accept(sockaddr * addr, socklen_t *addrlen) const {
             case EOPNOTSUPP:
             case EPROTO:
                 logger << "errno: " << errno << std::endl;
-                file_assert(false, "accept error");
+                assert(false);
             default:
-                file_assert(false, "unknown error");
+                assert(false);
         }
         throw std::system_error(errno, std::generic_category());
     }
     return client_socket(sock);
 }
 void client_socket::connect( const sockaddr *addr, socklen_t addrlen) const {
-    file_assert(m_fd != -1, "bad connect socket");
+    assert(m_fd != -1);
     if(::connect(m_fd, addr, addrlen)==-1) {
         throw std::system_error(errno, std::generic_category());
     }
 }
 void cppsocket::getsockopt(int level, int optname, void *optval, socklen_t *optlen) const {
-    file_assert(m_fd != -1, "bad getsockopt socket");
+    assert(m_fd != -1);
     if(::getsockopt(m_fd, level, optname, optval, optlen) == -1) {
        throw std::system_error(errno, std::generic_category());
     }
 }
 void cppsocket::setsockopt(int level, int optname, const void *optval, socklen_t optlen) const {
-    file_assert(m_fd != -1, "bad setsockopt");
+    assert(m_fd != -1);
     if(::setsockopt(m_fd, level, optname, optval, optlen) == -1) {
         throw std::system_error(errno, std::generic_category());
     }
 }
 size_t cppsocket::send(const void *buf, size_t len, int flags) const {
-    file_assert(m_fd != -1, "bad send socket");
+    assert(m_fd != -1);
     const ssize_t bytes = ::send(m_fd , buf, len, flags);
     if(bytes == -1) {
         logger << "send error: " << errno << std::endl;
@@ -120,7 +116,7 @@ size_t cppsocket::send(const void *buf, size_t len, int flags) const {
 }
 
 size_t cppsocket::recv(void *buf, size_t len, int flags) const {
-    file_assert(m_fd != -1, "bad recv on socket");
+    assert(m_fd != -1);
     
     const ssize_t bytes = ::recv(m_fd, buf, len, flags);
     if(bytes == -1) {
@@ -131,14 +127,14 @@ size_t cppsocket::recv(void *buf, size_t len, int flags) const {
 
 
 void server_socket::bind(const sockaddr *addr, socklen_t addrlen) const {
-    file_assert(m_fd != -1, "bad bind");
+    assert(m_fd != -1);
     if(::bind(m_fd, addr, addrlen) == -1) {
         throw std::system_error(errno, std::generic_category());
     }
 }
 
 void server_socket::listen(int backlog) const {
-    file_assert(m_fd != -1, "bad listen");
+    assert(m_fd != -1);
     if(::listen(m_fd,backlog) == -1) {
         throw std::system_error(errno, std::generic_category());
     }
@@ -146,7 +142,7 @@ void server_socket::listen(int backlog) const {
 }
 
 int cppsocket::fcntl(int cmd...) const {
-    file_assert(m_fd != -1, "bad fcntl");
+    assert(m_fd != -1);
     auto x = ::fcntl(m_fd, cmd);
     if(x == -1) {
         throw std::system_error(errno, std::generic_category());

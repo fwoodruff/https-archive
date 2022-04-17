@@ -76,7 +76,6 @@ public:
     
     ustring hash() && override;
     
-    // weird edge case:
     // overriding only the r-value reference qualified member function won't compile
     ustring hash() const & override;
     

@@ -24,12 +24,11 @@ private:
     std::array<uint8_t, 20> server_MAC_key;
     std::array<uint8_t, 20> client_MAC_key;
 
-    size_t m_key_size;
     uint64_t seqno_server;
     uint64_t seqno_client;
     
 public:
-    AES_CBC_SHA(size_t key_size);
+    AES_CBC_SHA();
     
     void set_key_material(ustring material) override;
     tls_record encrypt(tls_record record) override;

@@ -48,7 +48,7 @@ using ustring = std::basic_string<uint8_t>;
 
 inline void write_int(uint64_t x, uint8_t* const s, short n) noexcept {
     assert(static_cast<size_t>(n) >= sizeof(uint64_t) or x < (1ull << (n*8)));
-    assert(static_cast<size_t>(n) <= sizeof(uint64_t)); // avoids ub
+    assert(static_cast<size_t>(n) <= sizeof(uint64_t));
     for(short i = n-1; i >= 0; i--) {
         s[i] = static_cast<uint8_t>(x) & 0xffU;
         x>>=8;
@@ -70,14 +70,6 @@ inline void write_int(uint64_t x, uint8_t* const s, short n) noexcept {
 
 } // namespace fbw
 
-
-inline void file_assert(bool assertion, const std::string_view& message) {
-    if(!assertion) {
-        logger << message << std::endl;
-        logger.close();
-        std::terminate();
-    }
-}
 
 
 

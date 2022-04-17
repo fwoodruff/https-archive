@@ -75,8 +75,8 @@ constexpr ct_u256 REDCQ(ct_u512 T) noexcept {
 constexpr affine_point256 POINT_AT_INFINITY { secp256r1_p, secp256r1_p, "0x0"_xl};
 
 ct_u256 add_mod(ct_u256 x, ct_u256 y , ct_u256 mod) noexcept {
-    file_assert(x < mod, "add_mod(): x < mod" );
-    file_assert(y < mod, "add_mod(): y < mod" );
+    assert(x < mod);
+    assert(y < mod);
     auto sum = x + y;
     if (sum < x or sum > mod) {
         sum -= mod;
@@ -85,8 +85,8 @@ ct_u256 add_mod(ct_u256 x, ct_u256 y , ct_u256 mod) noexcept {
 }
 
 ct_u256 sub_mod(ct_u256 x, ct_u256 y, ct_u256 mod) noexcept {
-    file_assert(x < mod, "sub_mod(): x < mod" );
-    file_assert(y < mod, "sub_mod(): y < mod" );
+    assert(x < mod);
+    assert(y < mod);
     if(x > y) {
         return x - y;
     } else {
@@ -207,7 +207,7 @@ affine_point256 point_add(const affine_point256& P, const affine_point256& Q) no
 
 // finds point R on the line tangent to point P on the curve
 affine_point256 point_double(const affine_point256& P) noexcept {
-    file_assert(P.ycoord <= secp256r1_p, "error in SECP point double input");
+    assert(P.ycoord <= secp256r1_p);
     
     if (P.ycoord == "0x0"_xl or P.ycoord == secp256r1_p) {
         logger << "PD Point at Infinity" << std::endl;
@@ -241,8 +241,8 @@ affine_point256 point_double(const affine_point256& P) noexcept {
 }
 
 affine_point256 point_multiply_affine(const ct_u256& secret, const ct_u256& x_coord, const ct_u256& y_coord) noexcept {
-    file_assert(secret < secp256r1_p, "secret < secp256r1_p");
-    file_assert(secret != "0x0"_xl, "secret != 0");
+    assert(secret < secp256r1_p);
+    assert(secret != "0x0"_xl);
 
     
     affine_point256 out {"0x0"_xl,"0x0"_xl,"0x0"_xl};
@@ -318,31 +318,12 @@ bool verify_signature(const ct_u256& h,
     auto P = point_multiply_affine( (h * s1) % secp256r1_q, secp256r1_gx, secp256r1_gy);
     auto Q = point_multiply_affine( (r * s1) % secp256r1_q, pub_x, pub_y);
     auto R = point_add(P, Q);
-    auto [x,y] = project(R); // converts back to ordinary coordinates
+    auto [x,y] = project(R); // converts back to cartesian coordinates
     return (x == r);
 }
 
 
-ECDSA_signature ECDSA_impl2(const ct_u256& k_random, const ct_u256& digest, const ct_u256& private_key) {
-    if (k_random == "0x0"_xl or k_random >= secp256r1_q) {
-        throw std::logic_error("bad random");
-    }
-    
-    auto [x, y] = point_multiply(k_random, secp256r1_gx, secp256r1_gy);
-    auto r = x % secp256r1_q;
-    if (r == "0x0"_xl) {
-        throw ssl_error("bad random", AlertLevel::fatal, AlertDescription::handshake_failure);
-    }
-    auto s = (invQ(k_random)* ( ct_u512(digest) + r * private_key) ) % secp256r1_q;
-    if (s == "0x0"_xl) {
-        throw std::logic_error("bad random");
-    }
 
-    //auto [pubx, puby] = point_multiply(ct_u256(private_key), secp256r1_gx, secp256r1_gy);
-    //assert(verify_signature(digest,r, s, pubx, puby));
-    
-    return {r, s};
-}
 
 ECDSA_signature ECDSA_impl(const ct_u256& k_random, const ct_u256& digest, const ct_u256& private_key) {
     if (k_random == "0x0"_xl or k_random >= secp256r1_q) {
@@ -357,7 +338,6 @@ ECDSA_signature ECDSA_impl(const ct_u256& k_random, const ct_u256& digest, const
     
     auto r = x;
     if (r == "0x0"_xl) {
-        // astronomically unlikely
         throw std::logic_error("bad random");
     }
     

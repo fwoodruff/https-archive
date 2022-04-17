@@ -32,7 +32,7 @@ class TLS final : public receiver {
     bool is_client_handshake_finished_done = false;
     std::array<uint8_t,32> client_public_key {};
     std::array<uint8_t,32> server_private_key_ephem {};
-    std::unique_ptr<hash_base> handshake_hasher = nullptr;;
+    std::unique_ptr<hash_base> handshake_hasher = nullptr;
     std::array<uint8_t,48> master_secret {};
     std::unique_ptr<cipher_base> cipher_context = nullptr;
     std::unique_ptr<const hash_base> hasher_factory = nullptr;

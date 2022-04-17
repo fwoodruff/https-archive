@@ -119,12 +119,13 @@ std::array<uint8_t,32> ec_deserialise(ustring asn1) {
 }*/
 
 std::array<uint8_t,32> deserialise(ustring asn1) {
-    //assert(asn1.size() >=38);
+    assert(asn1.size() >=38);
     // currently this ignores everything and assumes the file is secp256r1
     std::array<unsigned char,32> privkey;
     std::copy(&asn1[36], &asn1[36+32], privkey.begin());
     return privkey;
 }
+
 /*
 std::array<uint8_t,32> ec_privkey_from_file(std::string_view filename) {
     std::ifstream t(filename);

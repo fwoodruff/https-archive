@@ -37,8 +37,7 @@ public:
     void set_key_material(ustring material) override;
     tls_record encrypt(tls_record record) override;
     tls_record decrypt(tls_record record) override;
-    
-    static void test();
+
 };
  
 

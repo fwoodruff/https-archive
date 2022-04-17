@@ -22,11 +22,11 @@
 namespace fbw {
 
 uint32_t rotate_left(uint32_t a, uint32_t b) noexcept {
-    file_assert(b < 32, "rotate_left");
+    assert(b < 32);
     return (a << b) | (a >> (32-b));
 }
 uint32_t rotate_right(uint32_t a, uint32_t b) noexcept {
-    file_assert(b < 32, "rotate_right");
+    assert(b < 32);
     return (a >> b) | (a << (32-b));
 }
 uint32_t CH(uint32_t x, uint32_t y, uint32_t z) noexcept {
@@ -49,7 +49,7 @@ uint32_t SIG1(uint32_t x) noexcept {
 }
 
 constexpr double sq_root(double x) noexcept {
-    assert(x >= 0 ); // cannot write to file in constexpr function
+    assert(x >= 0); // cannot write to file in constexpr function
     constexpr double small = 9*std::numeric_limits<double>::epsilon();
     double guess = 1;
     double diff = 1;
@@ -152,7 +152,7 @@ sha256::sha256() noexcept  : datalen(0),  bitlen(0), data(), done(false) {
 
 sha256& sha256::update_impl(const uint8_t* const begin, size_t size) noexcept {
     for (size_t i = 0; i < size; ++i) {
-        file_assert(datalen < data.size(), "update_impl broken");
+        assert(datalen < data.size());
         data[datalen++] = begin[i];
         if (datalen == 64) {
             sha256_transform(state, data);
@@ -165,7 +165,7 @@ sha256& sha256::update_impl(const uint8_t* const begin, size_t size) noexcept {
 
 
 ustring sha256::hash() && {
-    file_assert(!done, "sha256::hash() done");
+    assert(!done);
     ustring hash;
     hash.resize(32);
     size_t dlen = datalen;
@@ -274,7 +274,7 @@ sha1& sha1::update_impl(const uint8_t* const data, size_t size) noexcept {
 
 
 ustring sha1::hash() && {
-    file_assert(!done, "sha1::hash() done");
+    assert(!done);
     m_data[datalen%block_size] = 0x80;
     
     if(datalen%block_size >= 56) {
@@ -309,10 +309,10 @@ std::unique_ptr<hash_base> sha1::clone() const {
 ustring hmac::hash() && {
     std::vector<uint8_t> opadkey;
     opadkey.resize(m_factory->get_block_size());
-    file_assert(opadkey.size() == 64, "bad opadkey size");
+    assert(opadkey.size() == 64);
     std::transform(KeyPrime.cbegin(), KeyPrime.cend(), opadkey.begin(), [](uint8_t c){return c ^ 0x5c;});
     auto hsh = m_hasher->hash();
-    file_assert(!hsh.empty(), "empty hash");
+    assert(!hsh.empty());
     
     auto outsha = m_factory->clone();
     outsha->update(opadkey);
@@ -370,10 +370,6 @@ hmac::hmac(std::unique_ptr<hash_base> hasher, const uint8_t* key, size_t key_len
     std::transform(KeyPrime.cbegin(), KeyPrime.cend(), ipadkey.begin(), [](uint8_t c){return c ^ 0x36;});
     m_hasher->update(ipadkey);
 }
-
-
-
-
 
 
 } // namespace fbw

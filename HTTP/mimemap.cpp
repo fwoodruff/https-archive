@@ -20,7 +20,7 @@
 namespace fbw {
 
 
-decltype(MIMES("")) MIMEmap;// = MIMES(MIME_folder);
+decltype(MIMES("")) MIMEmap;
 bool init = false;
 
 /*
@@ -108,10 +108,8 @@ std::string extension_from_path(std::string path) {
  This is used in the header of the GET response
  */
 std::string get_MIME(std::string extension) {
-    if(init == false) {
-        MIMEmap = MIMES(MIME_folder);
-        init = true;
-    }
+    static std::once_flag init_MIME {};
+    std::call_once(init_MIME, [&](){MIMEmap = MIMES(MIME_folder);});
     try {
         return MIMEmap.at(extension);
     } catch(const std::logic_error& e) {

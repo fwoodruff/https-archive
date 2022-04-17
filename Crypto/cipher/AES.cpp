@@ -39,7 +39,7 @@ void SubBytes(aes_block&) noexcept;
 [[nodiscard]] aes_block cipher(aes_block plaintext, const roundkey&) noexcept;
 [[nodiscard]] aes_block InvCipher(aes_block ciphertext, const roundkey& roundkeys) noexcept;
 
-// rotates the bits of a byte e.g.  10001001 -> 00010011
+// rotates left the bits of a byte e.g.  10001001 -> 00010011
 constexpr uint8_t ROTL8(uint8_t x, int shift) {
     return (x << shift) | (x >> (8 - shift));
 }
@@ -167,7 +167,7 @@ constexpr auto GMULRES = []() {
     return resa;
 }();
 uint8_t GMul(uint8_t a, uint8_t b) {
-    file_assert(a < 16, "array out of bounds");
+    assert(a < 16);
     // I moved the table outside of function scope.
     // Without optimisation flags the compiler was copying
     // the whole table every call.
@@ -248,7 +248,7 @@ roundkey KeyExpansion(const aeskey& AESkey) {
     for(ssize_t i = Nka; i < Nb * (Nra+1); i++) {
         byte_word temp {};
         temp = keybytes[i-1];
-        file_assert( Nka != 0, "division by zero");
+        assert( Nka != 0);
         if (i % Nka == 0) {
             std::rotate(temp.begin(), &temp[1], temp.end());
             std::transform(temp.cbegin(), temp.cend(), temp.begin(), [](uint8_t c) { return SBOX[c]; });

@@ -24,6 +24,11 @@
 
 namespace fbw {
 #ifdef __linux__
+/*
+ Using epoll is overkill and more useful for proxies and balancers.
+ This is a not production code and I wanted to use it anyway.
+ */
+
 poll_context::poll_context() {
     m_epfd = epoll_create(MAX_SOCKETS);
     if(m_epfd == -1) {
@@ -46,10 +51,10 @@ void poll_context::add_fd(const cppsocket& sock, event_var return_object, bool r
 
     if(epoll_ctl(m_epfd, EPOLL_CTL_ADD, r_fd, &event) == -1) {
         logger << "errno: " << errno << std::endl;
-        file_assert(false, "epoll add failed");
+        assert(false);
     } else {
         auto succ = m_events.insert({r_fd, return_object});
-        file_assert(succ.second, "insertion failed in add_fd");
+        assert(succ.second);
     }
 }
 
@@ -61,17 +66,17 @@ void poll_context::mod_fd(const cppsocket& sock, bool read_state, bool write_sta
     
     if(epoll_ctl(m_epfd, EPOLL_CTL_MOD, r_fd, &event) == -1) {
         logger << "errno: " << errno << std::endl;
-        file_assert(false, "epoll mod failed");
+        assert(false);
     }
 }
 
 void poll_context::del_fd(const cppsocket& sock) {
     if(epoll_ctl(m_epfd, EPOLL_CTL_DEL, sock.get_native(), nullptr) == -1) {
         logger << "errno: " << errno << std::endl;
-        file_assert(false, "epoll del failed");
+        assert(false);
     } else {
         size_t rm = m_events.erase(sock.get_native());
-        file_assert(rm == 1, "removed object wasn't in poll context");
+        assert(rm == 1);
     }
 }
 
@@ -80,20 +85,20 @@ std::vector<fpollfd> poll_context::get_events(bool do_timeout) {
     std::vector<epoll_event> epoll_events;
     epoll_events.resize(MAX_SOCKETS);
     const int num_descriptors = epoll_wait(m_epfd, epoll_events.data(), MAX_SOCKETS, do_timeout? timeoutms: -1);
-    file_assert(num_descriptors <= MAX_SOCKETS, "too many descriptors retrieved");
+    assert(num_descriptors <= MAX_SOCKETS);
     if (num_descriptors == -1) {
         if(errno == EINTR) {
             return events;
         }
         logger << "errno: " << errno << std::endl;
-        file_assert(false, "epoll_wait failed");
+        assert(false);
     }
     events.resize(num_descriptors);
     
     for(int i = 0; i < num_descriptors; i++) {
         events[i].read  = bool(epoll_events[i].events & EPOLLIN );
         events[i].write = bool(epoll_events[i].events & EPOLLOUT);
-        file_assert(m_events.find(epoll_events[i].data.fd) != m_events.end(), "polled event did not exist");
+        assert(m_events.find(epoll_events[i].data.fd) != m_events.end());
         events[i].node = m_events[epoll_events[i].data.fd];
     }
     return events;
@@ -106,15 +111,15 @@ poll_context::~poll_context() { }
 
 void poll_context::add_fd(const cppsocket& sock, event_var return_object, bool read_state, bool write_state) {
     auto succ = m_events.insert({sock.get_native(),{return_object, read_state,write_state}});
-    file_assert(succ.second == 1, "fd already in context");
+    assert(succ.second == 1);
 }
 
 void poll_context::mod_fd(const cppsocket& sock, bool read_state, bool write_state) {
-    file_assert(m_events.find(sock.get_native()) != m_events.end(), "bad mod_fd assert");
+    assert(m_events.find(sock.get_native()) != m_events.end());
     auto fp = m_events[sock.get_native()];
     auto succ = m_events.erase(sock.get_native());
     
-    file_assert(succ != 0, "file descriptor didn't exist, mod_fd");
+    assert(succ != 0);
     
     fp.read = read_state;
     fp.write = write_state;
@@ -124,14 +129,14 @@ void poll_context::mod_fd(const cppsocket& sock, bool read_state, bool write_sta
 void poll_context::del_fd(const cppsocket& sock) {
     long succ = m_events.erase(sock.get_native());
     if (succ == 0) {
-        file_assert(succ != 0, "file descriptor didn't exist, del_fd");
+        assert(succ != 0);
     }
 }
 
 std::vector<fpollfd> poll_context::get_events(bool do_timeout) {
-    std::vector<fpollfd> events;
-    int num_descriptors;
-    std::vector<pollfd> evs;
+    std::vector<fpollfd> events {};
+    int num_descriptors = 0;
+    std::vector<pollfd> evs {};
 
     for(const auto& [fd, afpollfd] : m_events) {
         short ev = (afpollfd.read ? POLLIN  : 0) |
@@ -146,7 +151,7 @@ std::vector<fpollfd> poll_context::get_events(bool do_timeout) {
             return events;
         }
         logger << "errno: " << errno << std::endl;
-        file_assert(false, "poll failed");
+        assert(false);
     }
     events.reserve(num_descriptors);
     for(const auto& pfd : evs) {
@@ -157,7 +162,7 @@ std::vector<fpollfd> poll_context::get_events(bool do_timeout) {
             if(pfd.revents & POLLOUT) { out_event.write = true; }
             events.push_back(out_event);
         }
-        if(events.size() >= MAX_SOCKETS) {
+        if(events.size() >= static_cast<size_t>(MAX_SOCKETS)) {
             break;
         }
     }

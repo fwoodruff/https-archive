@@ -26,7 +26,7 @@ HTTP::HTTP(std::string folder, bool redirect) : m_folder(folder), m_redirect(red
  */
 status_message HTTP::handle(ustring uinput) noexcept {
     std::string input = to_signed(std::move(uinput));
-    status_message output;
+    status_message output {};
     try {
         // loop
         if(input.size() > max_bytes_queued) {
@@ -38,12 +38,11 @@ status_message HTTP::handle(ustring uinput) noexcept {
         
         if(!header.empty()) {
             const auto [delimiter, size] = body_size(header);
-            file_assert(delimiter == "" or size == 0, "no delimiter or size == 0");
+            assert(delimiter == "" or size == 0);
             std::string body;
             if(delimiter != "") {
                 body += extract(input, delimiter);
                 throw http_error("418 I'm a teapot");
-                // I need to implement this
             } else if(size != 0) {
                 body += extract(input, size);
                 if(body.size() == 0) {
@@ -78,7 +77,10 @@ status_message HTTP::handle(ustring uinput) noexcept {
         << error_message;
         output.m_response = to_unsigned(oss.str());
         output.m_status = status::closing;
-        
+    } catch(const std::logic_error& e) {
+        output.m_status = status::closing;
+    } catch(...) {
+        assert(false);
     }
     return output;
 }

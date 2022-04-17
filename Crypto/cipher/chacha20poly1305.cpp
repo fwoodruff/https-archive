@@ -267,6 +267,7 @@ void ChaCha20_Poly1305::set_key_material(ustring material) {
 }
 
 ustring make_additional(tls_record& record, std::array<uint8_t,8>& sequence_no, size_t tag_size) {
+    assert(record.m_contents.size() >= tag_size);
     uint16_t msglen = htons(record.m_contents.size() - tag_size);
     ustring additional_data;
     additional_data.append(sequence_no.begin(), sequence_no.end());
@@ -297,6 +298,9 @@ tls_record ChaCha20_Poly1305::encrypt(tls_record record) {
 
 
 tls_record ChaCha20_Poly1305::decrypt(tls_record record) {
+    if(record.m_contents.size() < 16) {
+        throw ssl_error("short record Poly1305", AlertLevel::fatal, AlertDescription::decrypt_error);
+    }
 
     std::array<uint8_t, 8> sequence_no {};
     write_int(seqno_client, sequence_no.data(), 8);

@@ -80,6 +80,7 @@ public:
     client_socket(int fd) : cppsocket(fd) {}
     client_socket(int domain, int type, int protocol) : cppsocket(domain, type, protocol) {}
     
+    
     void connect(const struct sockaddr *addr, socklen_t addrlen) const;
     std::pair<std::string, std::string> cli_socketinfo();
     friend class server_socket;

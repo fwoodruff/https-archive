@@ -152,7 +152,7 @@ public:
     {}
     
     inline ustring serialise() const {
-        file_assert(m_contents.size() != 0, "sending out empty record");
+        assert(m_contents.size() != 0);
         ustring out;
         out.append({m_type, m_major_version, m_minor_version, 0,0});
         write_int(m_contents.size(), &out[3], 2);
