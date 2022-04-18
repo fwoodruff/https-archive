@@ -39,8 +39,6 @@ public:
     tls_record decrypt(tls_record record) override;
 
 };
- 
-
 
 } // namespace fbw
 

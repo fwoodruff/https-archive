@@ -19,34 +19,37 @@ namespace fbw {
 
 HTTP::HTTP(std::string folder, bool redirect) : m_folder(folder), m_redirect(redirect) {}
 
-
-
 /*
- This gets called when there is data in https_connection::input to handle
+ Unencrypted raw bytes get buffered in here.
+ Responses are concatenated for each fully framed HTTP request, otherwise an empty value is returned.
  */
 status_message HTTP::handle(ustring uinput) noexcept {
-    std::string input = to_signed(std::move(uinput));
-    status_message output {};
+    input.append(to_signed(std::move(uinput)));
+    status_message output { .m_status = status::read_write };
     try {
-        // loop
-        if(input.size() > max_bytes_queued) {
-            throw http_error("414 URI Too Long");
-        }
-        if(header.empty()) {
-            header = extract(input, "\r\n\r\n");
-        }
-        
-        if(!header.empty()) {
+        while(1) {
+            if(input.size() > max_bytes_queued) {
+                throw http_error("414 URI Too Long");
+            }
+            if(header.empty()) {
+                header = extract(input, "\r\n\r\n");
+            }
+            
+            if(header.empty()) {
+                break;
+            }
+            
             const auto [delimiter, size] = body_size(header);
             assert(delimiter == "" or size == 0);
             std::string body;
             if(delimiter != "") {
                 body += extract(input, delimiter);
                 throw http_error("418 I'm a teapot");
-            } else if(size != 0) {
+            }
+            if(size != 0) {
                 body += extract(input, size);
                 if(body.size() == 0) {
-                    return {to_unsigned(""), status::read_write};
+                    return output;
                 }
             }
             
@@ -59,11 +62,10 @@ status_message HTTP::handle(ustring uinput) noexcept {
             }
             header.clear();
 
-            output.m_response = to_unsigned(response);
-            output.m_status = status::read_write;
+            output.m_response += to_unsigned(response);
         }
     } catch(const http_error& e) {
-        header = "";
+        header.clear();
         
         auto error_message = std::string(e.what());
         
@@ -75,7 +77,7 @@ status_message HTTP::handle(ustring uinput) noexcept {
         << "Server: FredPi/0.1 (Unix) (Raspbian/Linux)\r\n"
         << "\r\n"
         << error_message;
-        output.m_response = to_unsigned(oss.str());
+        output.m_response += to_unsigned(oss.str());
         output.m_status = status::closing;
     } catch(const std::logic_error& e) {
         output.m_status = status::closing;
@@ -84,6 +86,5 @@ status_message HTTP::handle(ustring uinput) noexcept {
     }
     return output;
 }
-
  
 };// namespace fbw

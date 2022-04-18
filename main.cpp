@@ -19,6 +19,10 @@
 #include <array>
 #include <fstream>
 
+// HTTP has a lot of state, why not just pass fail on whether a full HTTP framed message can be extracted rather than
+// mess around with headers?
+
+// heartbeats are handled safely but wrong
 
 int main() {
     try {

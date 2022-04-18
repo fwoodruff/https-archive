@@ -31,10 +31,9 @@ public:
         return update_impl(data.data(), data.size());
     }
     
-    virtual ustring hash() const &;
-    virtual ustring hash() && = 0;
-    
-    
+    [[nodiscard]] ustring hash() const &;
+    [[nodiscard]] virtual ustring hash() && = 0;
+
     [[nodiscard]] virtual size_t get_block_size() const noexcept = 0;
 };
 

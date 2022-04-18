@@ -475,18 +475,15 @@ void TLS::server_change_cipher_spec(status_message& output) {
 
 void TLS::server_handshake_finished(status_message& output) {
     tls_record out(ContentType::Handshake);
-    out.m_contents = {static_cast<uint8_t>(HandshakeType::finished), 0x00, 0x00, 0x0c};
+    out.m_contents = { static_cast<uint8_t>(HandshakeType::finished), 0x00, 0x00, 0x0c };
     
-    std::string seedsi = "server finished";
+    const std::string SERVER_HANDSHAKE_SEED = "server finished";
     ustring seed;
-    seed.append(seedsi.cbegin(),seedsi.cend());
-    
+    seed.append(SERVER_HANDSHAKE_SEED.cbegin(),SERVER_HANDSHAKE_SEED.cend());
     
     if(!is_client_hello_done) {
         throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
     }
-    
-    
     auto local_hasher = handshake_hasher->clone(); // the others?
     auto handshake_hash = local_hasher->hash();
     assert(handshake_hash.size() == 32);
@@ -506,8 +503,6 @@ void TLS::server_handshake_finished(status_message& output) {
     
     assert(p1.size() >= 12);
     out.m_contents.append(&p1[0], &p1[12]);
-
-
     if(is_change_cipher_spec_done) {
         out = cipher_context->encrypt(std::move(out));
     } else {
@@ -517,14 +512,12 @@ void TLS::server_handshake_finished(status_message& output) {
 }
 
 /*
- The num_records argument gives the connection a fighting chance to return the client's payload in one go right after the handshake.
- If the client asks for a large file, it falls back to batch processing.
- 
  This is a generator and uses the following class arguments as its state
  bool more_to_send
  size_t send_byte_idx
  status_message app_out
-
+ 
+ The purpose is to batch process large requests to avoid denial of service
  */
 status_message TLS::generate_packet(int num_records) {
     assert(more_to_send == true);
@@ -560,7 +553,6 @@ status_message TLS::generate_packet(int num_records) {
             output.m_status = status::flush;
         }
     }
-
     return output;
 }
 
@@ -577,8 +569,6 @@ void TLS::client_application_data(const ustring& application_data, status_messag
     assert( output.m_response.empty());
     
     app_out = next->handle(application_data);
-
-    
     send_byte_idx = 0;
     more_to_send = true;
 
@@ -623,18 +613,14 @@ void TLS::client_heartbeat(const ustring& heartbeat_message, status_message& out
     if(heartbeat_message.size() != 1 or heartbeat_message[0] != 0x01) {
         throw ssl_error("heartbleed", AlertLevel::fatal, AlertDescription::access_denied);
     }
-    
     tls_record heartbeat_record( ContentType::Heartbeat);
-
     heartbeat_record.m_contents = {2};
-    
     if(is_change_cipher_spec_done) {
         assert(is_client_hello_done);
         heartbeat_record = cipher_context->encrypt(std::move(heartbeat_record));
     }
     output.m_response.append(heartbeat_record.serialise());
 }
-
 
 std::array<uint8_t,48> TLS::make_master_secret(const std::unique_ptr<const hash_base>& hash_factory,
                                                std::array<uint8_t,32> server_private,
@@ -646,14 +632,11 @@ std::array<uint8_t,48> TLS::make_master_secret(const std::unique_ptr<const hash_
     auto premaster_secret = fbw::curve25519::multiply(server_private, client_public);
     std::reverse(premaster_secret.begin(), premaster_secret.end());
     
-    
     std::string seedsi = "master secret";
     ustring seed;
     seed.append(seedsi.cbegin(),seedsi.cend());
     seed.append(client_random.cbegin(), client_random.cend());
     seed.append(server_random.cbegin(), server_random.cend());
-    
-    
     
     const auto ctx = hmac(hash_factory->clone(), premaster_secret);
     auto ctx2 = ctx;
@@ -679,7 +662,6 @@ std::array<uint8_t,48> TLS::make_master_secret(const std::unique_ptr<const hash_
     
     return master_secret;
 }
-
 
 unsigned short TLS::cipher_choice(const ustring& s) {
     for(size_t i = 0; i < s.size(); i += 2) {
@@ -712,7 +694,6 @@ unsigned short TLS::cipher_choice(const ustring& s) {
 ustring TLS::expand_master(const std::array<unsigned char,48>& master,
                           const std::array<unsigned char,32>& server_random,
                           const std::array<unsigned char,32>& client_random, size_t len) const {
-
     ustring output;
     const std::string seed = "key expansion";
     ustring useed;
@@ -742,12 +723,11 @@ ustring TLS::expand_master(const std::array<unsigned char,48>& master,
     return output;
 }
 
-
 std::optional<tls_record> try_extract_record(ustring& input) {
     if (input.size() < 5) {
         return std::nullopt;
     }
-    tls_record out(static_cast<ContentType>(input[0]) ,input[1], input[2] );
+    tls_record out(static_cast<ContentType>(input[0]), input[1], input[2] );
 
     size_t record_size = checked_bigend_read(input,3,2);
     if(input.size() < record_size + 5) {
@@ -757,6 +737,5 @@ std::optional<tls_record> try_extract_record(ustring& input) {
     input = input.substr(5 + record_size);
     return out;
 }
-
 
 };// namespace fbw

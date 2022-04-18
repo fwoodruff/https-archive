@@ -57,30 +57,19 @@ private:
     
 };
 
-
 class hmac : public hash_base {
     std::unique_ptr<const hash_base> m_factory;
     std::unique_ptr<hash_base> m_hasher;
     std::vector<uint8_t> KeyPrime;
-    
 
     hmac(std::unique_ptr<hash_base> hasher, const uint8_t* key, size_t key_len);
 public:
-    template<typename T>
-    hmac(std::unique_ptr<hash_base> hasher, const T& key);
-    
+    template<typename T> hmac(std::unique_ptr<hash_base> hasher, const T& key);
     std::unique_ptr<hash_base> clone() const override;
-    
     hmac& update_impl(const uint8_t* key, size_t key_len) noexcept override;
-    
-    
-    ustring hash() && override;
-    
-    // overriding only the r-value reference qualified member function won't compile
-    ustring hash() const & override;
-    
+    [[nodiscard]] ustring hash() && override;
+    using hash_base::hash;
     [[nodiscard]] size_t get_block_size() const noexcept override;
-
 
     hmac(const hmac &);
     hmac& operator=(const hmac &);

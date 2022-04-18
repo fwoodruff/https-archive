@@ -69,7 +69,4 @@ inline void checked_bigend_write(uint64_t x, T& container, ssize_t idx, short nb
 
 } // namespace fbw
 
-
-
-
 #endif /* global_hpp */
