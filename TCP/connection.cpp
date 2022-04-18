@@ -43,6 +43,7 @@ connection::connection(time_point<steady_clock> tp, std::unique_ptr<receiver> rc
 }
 
 void connection::push_receiver(std::unique_ptr<receiver> r) {
+    assert(r != nullptr);
     if(primary_receiver != nullptr) {
         r->next = std::move(primary_receiver);
     }
@@ -56,6 +57,8 @@ connection::~connection() {
             context->del_fd(m_socket);
         } catch(const std::system_error& e) {
             logger << e.what();
+            assert(false);
+        } catch(...) {
             assert(false);
         }
     }

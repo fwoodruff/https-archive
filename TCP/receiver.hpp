@@ -17,14 +17,7 @@
 namespace fbw {
 
 enum class status : unsigned {
-    read_write, flush, /*dormant,*/ closing, closed
-    /*
-     read_only means event loop should await data received from client
-     read_write means poll if either available
-     read_dormant means the server can read, but may also wake up and have something to send
-     dormant means the server does not want to receive data but may awake and send something
-     dead means kill the receiver
-     */
+    read_write, flush, closing, closed
 };
 
 

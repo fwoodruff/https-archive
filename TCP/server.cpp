@@ -84,6 +84,8 @@ server_socket get_listener_socket(std::string service) {
             listener.bind(p->ai_addr, p->ai_addrlen);
         } catch (const std::system_error& e ) {
             continue;
+        } catch(...) {
+            assert(false);
         }
         break;
     }
@@ -193,13 +195,15 @@ void server::do_task(fpollfd event) {
                 }
             } catch(const std::runtime_error& e) {
                 logger << e.what() << std::endl;
+            } catch(...) {
+                assert(false);
             }
         }
     }, event.node);
 }
 
 bool server::get_task() {
-    unsigned idx;
+    size_t idx;
     {
         std::lock_guard lk(mut);
         idx = events_started;
@@ -236,6 +240,7 @@ void server::server_thread_task() {
 static int loop_index = 0;
 
 void server::serve_some() {
+    assert(connections.size() <= static_cast<size_t>(MAX_SOCKETS));
     loop_index++;
     logger << "loop count: " << loop_index << std::endl;
     
@@ -281,7 +286,6 @@ void server::serve_some() {
  */
 void server::accept_connection(const server_socket& sock, tp loop_time,
                                std::function<std::unique_ptr<receiver>()> receiver_stack) {
-    
     struct sockaddr_storage cli_addr;
     socklen_t sin_len = sizeof(cli_addr);
     auto skt = sock.accept((sockaddr *) &cli_addr, &sin_len);

@@ -280,12 +280,12 @@ ustring sha1::hash() && {
     if(datalen%block_size >= 56) {
         sha1_transform(m_state,m_data);
     }
-    write_int(datalen * 8, &m_data[56], 8);
+    checked_bigend_write(datalen * 8, m_data, 56, 8);
     sha1_transform(m_state,m_data);
     ustring hash;
     hash.resize(20);
     for(int i = 0; i < 5; i ++) {
-        write_int(m_state[i], &hash[i*4], 4);
+        checked_bigend_write(m_state[i], hash, i*4, 4);
     }
     return hash;
 }

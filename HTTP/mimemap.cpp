@@ -86,14 +86,14 @@ std::string extension_from_path(std::string path) {
         filename = path;
     }
     const std::string delimiter = ".";
-    if(filename.size()<delimiter.size()) return "";
-    if(filename.substr(filename.size()-delimiter.size()) == delimiter) {return "";}
-    if(filename.find(delimiter)==std::string::npos) {return ""; }
+    if(filename.size() < delimiter.size()) return "";
+    if(filename.substr(filename.size() - delimiter.size()) == delimiter) {return "";}
+    if(filename.find(delimiter) == std::string::npos) {return ""; }
     
     
-    for(long i = filename.size()-delimiter.size(); i >= 0; --i) {
-        if(filename.substr(i,delimiter.size()) == delimiter) {
-            auto ext = filename.substr(i+delimiter.size());
+    for(ssize_t i = filename.size() - delimiter.size(); i >= 0; --i) {
+        if(filename.substr(i, delimiter.size()) == delimiter) {
+            auto ext = filename.substr(i + delimiter.size());
             if(MIMEmap.find(ext) != MIMEmap.end()) {
                 return ext;
             }
@@ -115,6 +115,8 @@ std::string get_MIME(std::string extension) {
         return MIMEmap.at(extension);
     } catch(const std::logic_error& e) {
         throw http_error("415 Unsupported Media Type");
+    } catch(...) {
+        assert(false);
     }
 }
 

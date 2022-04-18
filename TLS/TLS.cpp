@@ -5,28 +5,6 @@
 //  Created by Frederick Benjamin Woodruff on 24/07/2021.
 //
 
-/*
-
-
-
- split out this file
- 
- remove heap memory from handshake functions // profile
- // check bounds errors
- 
- integrate the HTTP library.
- 
- write an interesting website.
- 
- implement a 'keep writing' function for the situation where the server is providing an
- infinite stream of data to the client and we still want to handle multiple clients
- implement a 'pipe-alert' function for the situation where a connection offloads work to another thread and we want this thread to go on.
- 
- implement more cryptographic variants and alerts
- 
- implement some post-quantum ciphers
-*/
-
 #include "TLS.hpp"
 
 #include "x25519.hpp"
@@ -50,11 +28,9 @@
 #include <algorithm>
 
 
-constexpr size_t TLS_record_size = (1u << 14) - 5;
+constexpr size_t TLS_RECORD_SIZE = (1u << 14) - 5;
 
 namespace fbw {
-
-
 
 std::optional<tls_record> try_extract_record(ustring& input);
 
@@ -74,6 +50,7 @@ status_message TLS::handle(ustring input) noexcept {
 
 
 status_message TLS::handle_input(ustring input) noexcept {
+    assert(!input.empty());
     m_input.append(input);
 
     status_message output {.m_status = status::read_write};
@@ -90,16 +67,12 @@ status_message TLS::handle_input(ustring input) noexcept {
             }
         }
     } catch(const ssl_error& e) {
-
         auto r = tls_record(ContentType::Alert);
-
         r.m_contents = { static_cast<uint8_t>(e.m_l), static_cast<uint8_t>(e.m_d) };
         if(is_change_cipher_spec_done) {
-            
             assert(cipher_context != nullptr);
             assert(is_client_hello_done);
             r = cipher_context->encrypt(r);
-            
         }
         auto str = r.serialise();
         logger << "from ssl error\n";
@@ -126,7 +99,7 @@ void TLS::handle_record(tls_record record, status_message& output) {
     if (record.get_major_version() != 3) {
         throw ssl_error("unsupported version", AlertLevel::fatal, AlertDescription::protocol_version);
     }
-    if (record.m_contents.size() > TLS_record_size) {
+    if (record.m_contents.size() > TLS_RECORD_SIZE) {
         throw ssl_error("oversized record", AlertLevel::fatal, AlertDescription::record_overflow);
     }
 
@@ -157,6 +130,8 @@ void TLS::handle_record(tls_record record, status_message& output) {
 }
  
 void TLS::client_handshake(ustring handshake_record, status_message& output) {
+    assert(handshake_record.size() <= TLS_RECORD_SIZE);
+    
     switch (handshake_record.at(0)) {
         case static_cast<uint8_t>(HandshakeType::hello_request):
             throw ssl_error("hello_request not supported", AlertLevel::fatal, AlertDescription::handshake_failure);
@@ -188,7 +163,7 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
     }
     
     
-    size_t len = safe_asval(hello,1,3);
+    size_t len = checked_bigend_read(hello,1,3);
     if(len+4 != hello.size()) {
         throw ssl_error("bad hello", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
@@ -200,9 +175,9 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
     std::copy(&hello.at(6), &hello.at(38), m_client_random.begin());
     // session ID
     size_t idx = 38;
-    idx += safe_asval(hello, idx, 1) + 1;
+    idx += checked_bigend_read(hello, idx, 1) + 1;
     // cipher suites
-    size_t ciphers_len = safe_asval(hello, idx, 2);
+    size_t ciphers_len = checked_bigend_read(hello, idx, 2);
     hello.at(idx+ ciphers_len + 2);
     cipher = cipher_choice(hello.substr(idx+2, ciphers_len));
     is_client_hello_done = true;
@@ -214,12 +189,12 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
     }
     idx += 2;
     // extensions
-    ssize_t extensions_len = safe_asval(hello,idx,2);
+    ssize_t extensions_len = checked_bigend_read(hello,idx,2);
 
     idx += 2;
     while(extensions_len > 0) {
-        size_t extension_type = safe_asval(hello,idx,2);
-        size_t extension_len = safe_asval(hello,idx+2,2);
+        size_t extension_type = checked_bigend_read(hello,idx,2);
+        size_t extension_len = checked_bigend_read(hello,idx+2,2);
         switch(extension_type) {
             case 0x000a:
             {
@@ -259,11 +234,12 @@ tls_record TLS::server_hello() {
     hello_record.m_contents.append({0}); // session ID
     ustring ciph;
     ciph.resize(2);
-    write_int(cipher, &ciph[0], 2);
+    checked_bigend_write(cipher, ciph, 0, 2);
     hello_record.m_contents.append(ciph);
     hello_record.m_contents.append({0}); // no compression
     hello_record.m_contents.append({0x00, 0x05, 0xff, 0x01, 0x00, 0x01, 0x00}); // extensions
-    write_int(hello_record.m_contents.size()-4, &hello_record.m_contents[1], 3);
+    assert(hello_record.m_contents.size() >= 4);
+    checked_bigend_write(hello_record.m_contents.size()-4, hello_record.m_contents, 1, 3);
 
     if(is_client_hello_done) {
         handshake_hasher->update(hello_record.m_contents);
@@ -283,16 +259,15 @@ tls_record TLS::server_certificate(){
     for (const auto& cert : certs) {
         ustring cert_header;
         cert_header.append({0,0,0});
-        write_int(cert.size(), cert_header.data(), 3);
+        checked_bigend_write(cert.size(), cert_header, 0, 3);
         certificate_record.m_contents.append(cert_header);
         certificate_record.m_contents.append(cert);
     }
 
-    
-    write_int(certificate_record.m_contents.size()-4, &certificate_record.m_contents[1], 3);
-    write_int(certificate_record.m_contents.size()-7, &certificate_record.m_contents[4], 3);
+    assert(certificate_record.m_contents.size() >= 7);
+    checked_bigend_write(certificate_record.m_contents.size()-4, certificate_record.m_contents, 1, 3);
+    checked_bigend_write(certificate_record.m_contents.size()-7, certificate_record.m_contents, 4, 3);
 
-    
     if(is_client_hello_done) {
         handshake_hasher->update(certificate_record.m_contents);
     } else {
@@ -314,7 +289,8 @@ tls_record TLS::server_key_exchange() {
     record.m_contents.reserve(116);
     record.m_contents = { static_cast<uint8_t>(HandshakeType::server_key_exchange), 0x00, 0x00, 0x00 };
     std::array<uint8_t,3> curveInfo({static_cast<uint8_t>(ECCurveType::named_curve), 0x00, 0x00});
-    write_int(static_cast<size_t>(NamedCurve::x25519), &curveInfo[1], 2);
+    
+    checked_bigend_write(static_cast<size_t>(NamedCurve::x25519), curveInfo, 1, 2);
     
     ustring signed_empheral_key;
     signed_empheral_key.append(curveInfo.cbegin(), curveInfo.cend());
@@ -345,13 +321,15 @@ tls_record TLS::server_key_exchange() {
     ustring signature = secp256r1::DER_ECDSA(std::move(csrn), std::move(signature_digest), std::move(certificate_private));
     ustring sig_header ({static_cast<uint8_t>(HashAlgorithm::sha256),
         static_cast<uint8_t>(SignatureAlgorithm::ecdsa), 0x00, 0x00});
-    write_int(signature.size(), &sig_header[2], 2);
+    
+    checked_bigend_write(signature.size(), sig_header, 2, 2);
     
     record.m_contents.append(signed_empheral_key);
     record.m_contents.append(sig_header);
     record.m_contents.append(signature);
 
-    write_int(record.m_contents.size()-4, &record.m_contents[1], 3);
+    assert(record.m_contents.size() >= 4);
+    checked_bigend_write(record.m_contents.size()-4, record.m_contents, 1, 3);
     
     if(!is_client_hello_done) {
         throw ssl_error("hello not done", AlertLevel::fatal, AlertDescription::internal_error);
@@ -386,8 +364,8 @@ void TLS::handle_client_key_exchange(const ustring& key_exchange) {
     }
     
     
-    const size_t len = safe_asval(key_exchange,1,3);
-    const size_t keylen = safe_asval(key_exchange,4,1);
+    const size_t len = checked_bigend_read(key_exchange,1,3);
+    const size_t keylen = checked_bigend_read(key_exchange,4,1);
     if(len+4 != key_exchange.size() or len != keylen + 1) {
         throw ssl_error("bad key exchange", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
@@ -445,7 +423,7 @@ void TLS::client_handshake_finished(const ustring& finish, status_message& outpu
     
     
     
-    const size_t len = safe_asval(finish,1,3);
+    const size_t len = checked_bigend_read(finish,1,3);
     if(len != 12) {
         throw ssl_error("bad verification", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
@@ -553,17 +531,16 @@ status_message TLS::generate_packet(int num_records) {
     status_message output {};
     
     for(int i = 0; i < num_records; i++) {
-        size_t small_record_size = std::clamp(size_t(randomgen.randgen64() % TLS_record_size), size_t(1), TLS_record_size);
-        size_t record_size = (randomgen.randgen64() % 10 != 0) ? TLS_record_size : small_record_size;
-        record_size = std::min(record_size, app_out.m_response.size() - send_byte_idx);
+        size_t small_record_size = std::clamp(size_t(randomgen.randgen64() % TLS_RECORD_SIZE), size_t(1), TLS_RECORD_SIZE);
+        size_t record_size = (randomgen.randgen64() % 10 != 0) ? TLS_RECORD_SIZE : small_record_size;
         
+        assert(app_out.m_response.size() >= send_byte_idx);
+        record_size = std::min(record_size, app_out.m_response.size() - send_byte_idx);
         
         if(record_size < 1) {
             throw ssl_error("null record", AlertLevel::fatal, AlertDescription::unexpected_message);
         }
-        
         assert(app_out.m_response.size() >= send_byte_idx+record_size);
-        assert(app_out.m_response.size() >= send_byte_idx);
         
         tls_record out(ContentType::Application);
         out.m_contents.append(&app_out.m_response[send_byte_idx],
@@ -705,9 +682,8 @@ std::array<uint8_t,48> TLS::make_master_secret(const std::unique_ptr<const hash_
 
 
 unsigned short TLS::cipher_choice(const ustring& s) {
-
     for(size_t i = 0; i < s.size(); i += 2) {
-        uint16_t x = safe_asval(s, i, 2);
+        uint16_t x = checked_bigend_read(s, i, 2);
         if (x == static_cast<uint16_t>(cipher_suites::TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256)) {
             cipher_context = std::make_unique<cha::ChaCha20_Poly1305>();
             hasher_factory = std::make_unique<sha256>();
@@ -716,7 +692,7 @@ unsigned short TLS::cipher_choice(const ustring& s) {
         }
     }
     for(size_t i = 0; i < s.size(); i += 2) {
-        uint16_t x = safe_asval(s, i, 2);
+        uint16_t x = checked_bigend_read(s, i, 2);
         if(x == static_cast<uint16_t>(cipher_suites::TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)) {
             cipher_context = std::make_unique<aes::AES_128_GCM_SHA256>();
             hasher_factory = std::make_unique<sha256>();
@@ -773,7 +749,7 @@ std::optional<tls_record> try_extract_record(ustring& input) {
     }
     tls_record out(static_cast<ContentType>(input[0]) ,input[1], input[2] );
 
-    size_t record_size = safe_asval(input,3,2);
+    size_t record_size = checked_bigend_read(input,3,2);
     if(input.size() < record_size + 5) {
         return std::nullopt;
     }

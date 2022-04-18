@@ -133,6 +133,7 @@ constexpr u192 REDCpoly(u384 aR) noexcept {
             aR.v[i+j] = static_cast<radix>(x);
             carry = x >> ct_u256::RADIXBITS;
         }
+        assert(aR.v.size() >= i);
         for(size_t j = a.v.size(); j < aR.v.size() - i; j++){
             radix2 x = static_cast<radix2>(aR.v[i+j]) + carry;
             aR.v[i+j] = static_cast<radix>(x);
@@ -280,7 +281,7 @@ ustring make_additional(tls_record& record, std::array<uint8_t,8>& sequence_no, 
 tls_record ChaCha20_Poly1305::encrypt(tls_record record) {
     std::array<uint8_t,8> sequence_no;
 
-    write_int(seqno_server, sequence_no.data(), 8);
+    checked_bigend_write(seqno_server, sequence_no, 0, 8);
     seqno_server++;
     
     ustring additional_data = make_additional(record, sequence_no, 0);
@@ -303,7 +304,7 @@ tls_record ChaCha20_Poly1305::decrypt(tls_record record) {
     }
 
     std::array<uint8_t, 8> sequence_no {};
-    write_int(seqno_client, sequence_no.data(), 8);
+    checked_bigend_write(seqno_client, sequence_no, 0, 8);
     seqno_client++;
 
     ustring additional_data = make_additional(record, sequence_no, 16);
@@ -312,6 +313,7 @@ tls_record ChaCha20_Poly1305::decrypt(tls_record record) {
     ciphertext.append(record.m_contents.begin(), record.m_contents.end()-16);
     
     std::array<uint8_t, 16> tag;
+    assert(std::distance(record.m_contents.begin(), record.m_contents.end()) >= 16);
     std::copy(record.m_contents.end()-16, record.m_contents.end(), tag.begin());
     
     std::array<uint8_t,12> nonce = client_implicit_write_IV;

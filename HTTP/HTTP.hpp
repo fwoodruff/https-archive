@@ -15,7 +15,7 @@
 namespace fbw {
 
 /*
- Handles HTTP streams
+ Handles HTTP bytestreams
  */
 class HTTP final : public receiver {
     static constexpr long max_bytes_queued = 1000000;

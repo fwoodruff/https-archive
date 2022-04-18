@@ -104,6 +104,8 @@ std::pair<std::string, size_t> body_size(const std::string& header) {
                 return {std::string(), std::stoi(arg) };
             } catch(const std::invalid_argument& e) {
                 throw http_error("400 Bad Request");
+            } catch(...) {
+                assert(false);
             }
         } else if (content.size() > multipart.size() and content.substr(0, multipart.size()) == multipart) {
             const auto n = content.find("\r\n");

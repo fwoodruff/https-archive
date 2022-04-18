@@ -7,7 +7,7 @@
 
 // Abridged from
 // https://github.com/michaeljclark/aes-gcm/blob/master/src/aes-gcm.c
-// I added a GCM cipher because Chrome does not support CBC ciphers.
+// I added a GCM cipher because Chrome does not support CBC ciphers, which are slightly insecure
 
 
 #include "galois_counter.hpp"
@@ -56,10 +56,10 @@ static inline void AES_PUT_BE64(uint8_t *a, uint64_t val)
 }
 
 static void inc32(aes_block& block) {
-    uint32_t val;
-    val = AES_GET_BE32(&block[block.size() - 4]);
+    assert(block.size() >= 4);
+    auto val = checked_bigend_read(block, block.size() - 4, 4);
     val++;
-    AES_PUT_BE32(&block[block.size() - 4], val);
+    checked_bigend_write(val, block, block.size() - 4, 4);
     assert(val != uint32_t(-1));
 }
 
@@ -71,55 +71,50 @@ static void xor_block(uint8_t *dst, const uint8_t *src) {
 }
 
 
-static void shift_right_block(uint8_t *v)
-{
+static void shift_right_block(aes_block& v) {
     uint32_t val;
-
-    val = AES_GET_BE32(v + 12);
+    val = AES_GET_BE32(v.data() + 12);
     val >>= 1;
-    if (v[11] & 0x01)
+    if (v[11] & 0x01) {
         val |= 0x80000000;
-    AES_PUT_BE32(v + 12, val);
+    }
+    AES_PUT_BE32(v.data() + 12, val);
 
-    val = AES_GET_BE32(v + 8);
+    val = AES_GET_BE32(v.data() + 8);
     val >>= 1;
-    if (v[7] & 0x01)
+    if (v[7] & 0x01) {
         val |= 0x80000000;
-    AES_PUT_BE32(v + 8, val);
+    }
+    AES_PUT_BE32(v.data() + 8, val);
 
-    val = AES_GET_BE32(v + 4);
+    val = AES_GET_BE32(v.data() + 4);
     val >>= 1;
     if (v[3] & 0x01)
         val |= 0x80000000;
-    AES_PUT_BE32(v + 4, val);
+    AES_PUT_BE32(v.data() + 4, val);
 
-    val = AES_GET_BE32(v);
+    val = AES_GET_BE32(v.data());
     val >>= 1;
-    AES_PUT_BE32(v, val);
+    AES_PUT_BE32(v.data(), val);
 }
 
 
 
 static void gf_mult(const uint8_t *x, const uint8_t *y, uint8_t *z)
 {
-    uint8_t v[16];
+    aes_block v;
     int i, j;
 
     memset(z, 0, 16);
-    memcpy(v, y, 16);
+    memcpy(v.data(), y, 16);
 
     for (i = 0; i < 16; i++) {
         for (j = 0; j < 8; j++) {
             if (x[i] & 1 << (7 - j)) {
-
-                xor_block(z, v);
-            } else {
-
+                xor_block(z, v.data());
             }
-
             if (v[15] & 0x01) {
                 shift_right_block(v);
-
                 v[0] ^= 0xe1;
             } else {
                 shift_right_block(v);
@@ -324,7 +319,7 @@ tls_record AES_128_GCM_SHA256::encrypt(tls_record record) {
     ustring sequence_no;
     sequence_no.resize(8);
     
-    write_int(seqno_server, sequence_no.data(), 8);
+    checked_bigend_write(seqno_server, sequence_no, 0, 8);
     seqno_server++;
 
     
@@ -359,7 +354,7 @@ tls_record AES_128_GCM_SHA256::decrypt(tls_record record) {
     
     ustring sequence;
     sequence.resize(8);
-    write_int(seqno_client, sequence.data(), 8);
+    checked_bigend_write(seqno_client, sequence, 0, 8);
     seqno_client++;
 
     ustring explicit_IV;
@@ -376,6 +371,7 @@ tls_record AES_128_GCM_SHA256::decrypt(tls_record record) {
     additional_data.append(sequence);
     additional_data.append({record.get_type(), record.get_major_version(), record.get_minor_version()});
     additional_data.resize(13);
+    assert(record.m_contents.size() >= auth_tag.size() + explicit_IV.size());
     uint16_t msglen = htons(record.m_contents.size() - auth_tag.size() - explicit_IV.size());
     std::memcpy(&additional_data[11], &msglen, 2);
 

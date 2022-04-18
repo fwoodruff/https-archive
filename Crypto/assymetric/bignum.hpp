@@ -22,9 +22,9 @@ namespace fbw {
 /*
  Specialised big number library
  Unsigned only
- Operations are constant time [To do: implement constant time conditional copy]
+ Operations are not constant time but should be
  
- Addition and subtraction may overflow.
+ Addition and subtraction wrap on overflow
  Multiplication and division change width so do not overflow.
  
  Friends with 'REDC' functions.
@@ -75,6 +75,7 @@ public:
     friend std::ostream& operator<<(std::ostream& os, const uVar& dt) {
         std::stringstream oss;
         oss << "0x";
+        assert(dt.v.size() >= 1);
         for(long i = dt.v.size()-1; i >=0 ; i--) {
             for(long j = 2 * sizeof(radix)-1; j >= 0; j--) {
                 unsigned long x = (dt.v[i] & (0xfULL << (4*j))) >> (4*j);
@@ -99,7 +100,7 @@ public:
     constexpr uVar(std::string_view s) noexcept {
         assert(s.size() >= 2);
         assert(s[0]== '0' and s[1]=='x');
-        assert(s.size()-2 <= INTBITS);
+        assert(s.size() <= INTBITS+2);
         constexpr int hexbits = 4;
         int rchars = RADIXBITS /hexbits;
         for(long i = s.size()-1, x=0; i >=2; i--, x++) {
@@ -163,12 +164,13 @@ public:
             return *this;
         }
         int bits = rhs % RADIXBITS;
-        int blocks = rhs / RADIXBITS;
+        size_t blocks = rhs / RADIXBITS;
 
         radix mask = 0;
         if(bits!=0) {
             mask = (static_cast<radix>(-1ULL)) << (RADIXBITS-bits);
         }
+        assert(v.size() >= blocks + 1);
         for(size_t i = 0; i < v.size()-blocks-1; i ++) {
             radix fromsame = v[i+blocks] >> bits;
             radix fromnext = 0;
@@ -177,6 +179,7 @@ public:
             }
             v[i] = fromsame | fromnext;
         }
+        assert(v.size() >= blocks+1);
         v[v.size()-blocks-1] = v[v.size()-1] >> bits;
         for(size_t i = v.size()-blocks; i < v.size(); i ++) {
             v[i] = 0;
@@ -189,12 +192,13 @@ public:
             return *this;
         }
         int bits = rhs % RADIXBITS;
-        int blocks = rhs / RADIXBITS;
+        ssize_t blocks = rhs / RADIXBITS;
         radix mask = 0;
         if(bits != 0) {
             mask = (static_cast<radix>(0)-1) >> (RADIXBITS-bits);
         }
-        for(long i = v.size()-1; i > blocks; i--) {
+        assert(v.size() >= 1);
+        for(ssize_t i = v.size()-1; i > blocks; i--) {
             radix fromsame = v[i-blocks] << bits;
             radix fromnext = 0;
             if(bits!=0) {
@@ -203,7 +207,7 @@ public:
             v[i] = fromsame | fromnext;
         }
         v[blocks] = v[0] << bits;
-        for(int i = blocks-1; i >= 0; i--) {
+        for(ssize_t i = blocks-1; i >= 0; i--) {
             v[i] = 0;
         }
         return *this;
@@ -259,7 +263,8 @@ public:
         bool ret = false;
         bool ina = true;
         bool outa = true;
-        for(/*volatile*/ long i = v.size() -1 ; i >= 0; i--) {
+        assert(v.size() >= 1);
+        for(/*volatile*/ ssize_t i = v.size() -1 ; i >= 0; i--) {
             ina &= (v[i]==rhs.v[i]);
             ret |= (v[i] > rhs.v[i]) and (ina != outa);
             outa = ina;
@@ -280,6 +285,7 @@ public:
             for(size_t j = 0; j < rhs.v.size(); j++) {
                 wide[i+j] += static_cast<radix2>(lhs.v[i]) * static_cast<radix2>(rhs.v[j]);
             }
+            assert(out.v.size() >= 1);
             for(size_t j = i; j < out.v.size()-1; j++) {
                 wide[j+1] += wide[j] >> (sizeof(radix)* CHAR_BIT);
                 wide[j] &=  static_cast<radix>(-1ULL);

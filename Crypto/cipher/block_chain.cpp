@@ -77,12 +77,12 @@ tls_record AES_CBC_SHA::encrypt(tls_record record) {
     auto ctx = hmac(std::make_unique<sha1>(), server_MAC_key );
 
     std::array<uint8_t,13> sequence {};
-    write_int(seqno_server, &sequence[0], 8);
+    checked_bigend_write(seqno_server, sequence, 0, 8);
     seqno_server++;
     sequence[8] = record.get_type();
     sequence[9] = record.get_major_version();
     sequence[10] = record.get_minor_version();
-    write_int(record.m_contents.size(),&sequence[11], 2);
+    checked_bigend_write(record.m_contents.size(), sequence, 11, 2);
     ctx.update(sequence);
     ctx.update(record.m_contents);
     auto machash = std::move(ctx).hash();
@@ -109,14 +109,10 @@ tls_record AES_CBC_SHA::encrypt(tls_record record) {
 
 tls_record AES_CBC_SHA::decrypt(tls_record record) {
     
-    
-    if(record.m_contents.size() % 16 != 0) {
+    if(record.m_contents.size() % 16 != 0 or record.m_contents.size() < 32) {
         throw ssl_error("bad encrypted record length", AlertLevel::fatal, AlertDescription::decrypt_error);
     }
-    if(record.m_contents.size() < 32) {
-        record.m_contents = {};
-        return record;
-    }
+
     ustring plaintext;
     std::array<uint8_t, 16> record_IV {};
     constexpr auto blocksize = record_IV.size();
@@ -138,32 +134,37 @@ tls_record AES_CBC_SHA::decrypt(tls_record record) {
 
         plaintext.append(plainxor.cbegin(),plainxor.cend());
     }
-    int siz = plaintext[plaintext.size()-1];
+    assert(plaintext.size() >= 1);
+    size_t siz = plaintext[plaintext.size()-1];
     if(siz+1+client_MAC_key.size() > plaintext.size()) {
         throw ssl_error("bad client padding length", AlertLevel::fatal, AlertDescription::decrypt_error);
     }
-    for(int i = 0; i < siz+1; i++) {
+    for(size_t i = 0; i < siz+1; i++) {
+        assert(plaintext.size() >= 1+i);
         if(plaintext[plaintext.size()-1-i] != siz) {
             throw ssl_error("bad client padding", AlertLevel::fatal, AlertDescription::decrypt_error);
         }
     }
 
+    assert(plaintext.size() >= siz + 1);
     plaintext.resize(plaintext.size()-siz-1);
 
     
     std::array<uint8_t, 20> mac_calc {};
     std::copy(plaintext.crbegin(), plaintext.crbegin() + 20, mac_calc.rbegin());
+    
+    assert(plaintext.size() >= mac_calc.size());
     plaintext.resize(plaintext.size() - mac_calc.size());
 
     auto ctx = hmac(std::make_unique<sha1>(), client_MAC_key);
     std::array<uint8_t,13> mac_hash_header {};
-    write_int(seqno_client, &mac_hash_header[0], 8);
+    checked_bigend_write(seqno_client, mac_hash_header, 0, 8);
     mac_hash_header[8] = record.get_type();
     mac_hash_header[9] = record.get_major_version();
     mac_hash_header[10] = record.get_minor_version();
 
     seqno_client++;
-    write_int(plaintext.size(),&mac_hash_header[11], 2);
+    checked_bigend_write(plaintext.size(), mac_hash_header, 11, 2);
 
     ctx.update(mac_hash_header);
     ctx.update(plaintext);

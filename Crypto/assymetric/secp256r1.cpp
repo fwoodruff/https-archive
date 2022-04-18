@@ -391,7 +391,9 @@ ustring DER_ECDSA(
         out.append({0x20});
     }
     out.append(s.cbegin(),s.cend());
-    out[1] = (unsigned char)out.size()-2;
+    assert(out.size() >= 2);
+    assert(out.size() < 256);
+    out[1] = static_cast<uint8_t>(out.size()-2);
     return out;
     
 }

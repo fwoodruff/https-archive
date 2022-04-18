@@ -69,6 +69,7 @@ constexpr ct_u256 REDC(ct_u512 aR) noexcept {
             aR.v[i+j] = static_cast<radix>(x);
             carry = x >> ct_u256::RADIXBITS;
         }
+        assert(aR.v.size() >= i);
         for(size_t j = a.v.size(); j < aR.v.size() - i; j++){
             radix2 x = static_cast<radix2>(aR.v[i+j]) + carry;
             aR.v[i+j] = static_cast<radix>(x);

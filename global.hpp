@@ -30,31 +30,30 @@ extern const ssize_t MAX_SOCKETS;
 extern const int timeoutms;
 extern const ssize_t BUFFER_SIZE;
 
-
-
-
-
-
-
 using ustring = std::basic_string<uint8_t>;
-[[nodiscard]] inline uint64_t safe_asval(const ustring& s, size_t idx, size_t bytes) {
+
+template<typename T>
+[[nodiscard]] inline uint64_t checked_bigend_read(const T& container, size_t idx, size_t nbytes) {
     uint64_t len = 0;
-    for(size_t i = idx; i < idx + bytes; i ++) {
-        len <<=8;
-        len |= s.at(i);
+    for(size_t i = idx; i < idx + nbytes; i ++) {
+        len <<= 8;
+        len |= container.at(i);
     }
     return len;
 }
 
-inline void write_int(uint64_t x, uint8_t* const s, short n) noexcept {
-    assert(static_cast<size_t>(n) >= sizeof(uint64_t) or x < (1ull << (n*8)));
-    assert(static_cast<size_t>(n) <= sizeof(uint64_t));
-    for(short i = n-1; i >= 0; i--) {
-        s[i] = static_cast<uint8_t>(x) & 0xffU;
+template<typename T>
+inline void checked_bigend_write(uint64_t x, T& container, ssize_t idx, short nbytes) {
+    assert(static_cast<ssize_t>(container.size()) > idx + nbytes - 1);
+    assert(nbytes >= 1);
+    assert(nbytes <= 8);
+    assert(nbytes == 8 or x < (1ull << nbytes*8));
+    assert(idx >= 0);
+    for(ssize_t i = idx+nbytes-1; i >= idx; i--) {
+        container[i] = static_cast<uint8_t>(x) & 0xffU;
         x>>=8;
     }
 }
-
 
 [[nodiscard]] inline ustring to_unsigned(std::string s) {
     ustring out;
