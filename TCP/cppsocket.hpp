@@ -24,15 +24,12 @@ class connection;
 class server_socket;
 
 enum class static_fd {
-    https_acceptor, // pipe also
-    http_acceptor // pipe also
+    https_acceptor,
+    http_acceptor
 };
-
 
 using node_ptr = std::list<connection>::iterator;
 using event_var = std::variant<node_ptr, static_fd>;
-
-
 
 struct fpollfd {
     event_var node;
@@ -49,8 +46,6 @@ protected:
     cppsocket(int domain, int type, int protocol);
     cppsocket() noexcept;
 public:
-    //static const ssize_t max_n = 5000;
-    
     virtual ~cppsocket();
     cppsocket(const cppsocket& other) = delete;
     cppsocket& operator=(const cppsocket& other) = delete;

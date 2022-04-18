@@ -75,14 +75,14 @@ status_message TLS::handle_input(ustring input) noexcept {
             r = cipher_context->encrypt(r);
         }
         auto str = r.serialise();
-        logger << "from ssl error\n";
+        std::cout << "from ssl error\n";
         return {str, status::closing };
     } catch(const std::out_of_range& e) {
         next.reset();
-        logger << "from out of range error\n";
+        std::cout << "from out of range error\n";
         return {{}, status::closed };
     } catch (const std::logic_error& e) {
-        logger << "from logic error\n";
+        std::cout << "from logic error\n";
         return {{}, status::closed };
     } catch(...) {
         assert(false);

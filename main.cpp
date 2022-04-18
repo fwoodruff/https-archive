@@ -51,17 +51,17 @@ int main() {
             webserver.serve_some();
         }
     } catch (const std::system_error& e) {
-        logger << "system error: " << e.code() << e.what() << std::endl;
+        std::cerr << "system error: " << e.code() << e.what() << std::endl;
     } catch (const std::runtime_error& e) {
-        logger << "runtime error: " << e.what() << std::endl;
+        std::cerr << "runtime error: " << e.what() << std::endl;
     } catch (const std::logic_error& e) {
-        logger << "logic error: " << e.what() << std::endl;
+        std::cerr << "logic error: " << e.what() << std::endl;
     } catch (const std::bad_alloc& e) {
-        logger << "std::bad_alloc\n";
+        std::cerr << "std::bad_alloc\n";
     } catch(const std::exception& e) {
-        logger << "server shut unexpectedly\n" << e.what() << std::endl;
+        std::cerr << "server shut unexpectedly\n" << e.what() << std::endl;
     } catch(...) {
-        logger << "unexpected server close\n" << std::endl;
+        std::cerr << "unexpected server close\n" << std::endl;
     }
-    logger << "end main()" << std::endl;
+    std::cout << "end main()" << std::endl;
 }

@@ -178,7 +178,7 @@ affine_point256 point_add(const affine_point256& P, const affine_point256& Q) no
             // I'll cross this bridge if I get to it
             // but I believe this is unreachable because
             // the server chooses what is signed
-            logger << "Point at infinity" << std::endl;
+            std::cerr << "Point at infinity" << std::endl;
             return POINT_AT_INFINITY;
         } else {
             return point_double(P);
@@ -210,7 +210,7 @@ affine_point256 point_double(const affine_point256& P) noexcept {
     assert(P.ycoord <= secp256r1_p);
     
     if (P.ycoord == "0x0"_xl or P.ycoord == secp256r1_p) {
-        logger << "PD Point at Infinity" << std::endl;
+        std::cerr << "PD Point at Infinity" << std::endl;
         return POINT_AT_INFINITY;
     }
     affine_point256 out;

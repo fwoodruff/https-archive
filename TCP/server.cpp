@@ -194,7 +194,7 @@ void server::do_task(fpollfd event) {
                         break;
                 }
             } catch(const std::runtime_error& e) {
-                logger << e.what() << std::endl;
+                std::cout << e.what() << std::endl;
             } catch(...) {
                 assert(false);
             }
@@ -242,7 +242,7 @@ static int loop_index = 0;
 void server::serve_some() {
     assert(connections.size() <= static_cast<size_t>(MAX_SOCKETS));
     loop_index++;
-    logger << "loop count: " << loop_index << std::endl;
+    std::cout << "loop count: " << loop_index << std::endl;
     
     bool can_accept = connections.size() < static_cast<size_t>(MAX_SOCKETS - 11);
     if(can_accept_old != can_accept) {
@@ -251,14 +251,12 @@ void server::serve_some() {
         can_accept_old = can_accept;
     }
     
-    
     loop_time = steady_clock::now();
     loop_events = m_poller.get_events(!connections.empty());
     
     events_started = 0;
     threads_finished = 0;
     
-
     {
         std::lock_guard<std::mutex> lk(mut);
         threads_to_start = thread_vec.size();
@@ -272,7 +270,6 @@ void server::serve_some() {
         loop_cv.wait(lk, [&]{ return threads_finished == thread_vec.size()+1;});
     }
 
-    
     const auto sentinel_stale = find_if_not(connections.crbegin(), connections.crend(),
                                    [&](const auto& elem){
         return loop_time - elem.m_time_set > 5s; });
@@ -297,7 +294,6 @@ void server::accept_connection(const server_socket& sock, tp loop_time,
 }
 
 server::~server() {
-    
     {
         std::lock_guard lk(mut);
         done = true;
@@ -306,7 +302,6 @@ server::~server() {
     for(auto& th : thread_vec) {
         th.join();
     }
-    logger << "~server()" << std::endl;
 }
 
 

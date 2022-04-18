@@ -78,7 +78,7 @@ client_socket server_socket::accept(sockaddr * addr, socklen_t *addrlen) const {
             case ENOTSOCK:
             case EOPNOTSUPP:
             case EPROTO:
-                logger << "errno: " << errno << std::endl;
+                std::cerr << "errno: " << errno << std::endl;
                 assert(false);
             default:
                 assert(false);
@@ -109,7 +109,7 @@ size_t cppsocket::send(const void *buf, size_t len, int flags) const {
     assert(m_fd != -1);
     const ssize_t bytes = ::send(m_fd , buf, len, flags);
     if(bytes == -1) {
-        logger << "send error: " << errno << std::endl;
+        std::cout << "send error: " << errno << std::endl;
         throw std::system_error(errno, std::generic_category());
     }
     return bytes;

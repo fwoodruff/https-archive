@@ -56,7 +56,7 @@ connection::~connection() {
         try {
             context->del_fd(m_socket);
         } catch(const std::system_error& e) {
-            logger << e.what();
+            std::cout << e.what();
             assert(false);
         } catch(...) {
             assert(false);
@@ -82,14 +82,14 @@ void connection::send_bytes_over_network() {
     
 
     if(write_buffer.empty()) {
-        logger << "sending empty buffer\n";
+        std::cerr << "sending empty buffer\n";
     }
     
     auto bytes = m_socket.send(write_buffer.data(), write_buffer.size(), MSG_NOSIGNAL);
     
     assert(bytes <= write_buffer.size());
     if(bytes == 0) {
-        logger << "sent no bytes\n" << std::flush;
+        std::cerr << "sent no bytes\n" << std::flush;
     }
     
     if(bytes == write_buffer.size()) {
@@ -165,8 +165,7 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                 
         }
     } catch(const std::runtime_error& e) {
-        logger << "exception" << std::endl;
-        logger << e.what() << std::endl;
+        std::cout << e.what() << std::endl;
         activity = status::closed;
     } catch(...) {
         assert(false);

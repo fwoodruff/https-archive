@@ -20,10 +20,10 @@
 
 namespace fbw {
 
-std::unordered_map<std::string,std::string> MIME_csv_to_map(std::string filename);
-std::unordered_map<std::string,std::string> MIMES(std::string directory_name);
-std::string get_MIME(std::string extension);
-std::string extension_from_path(std::string path);
+[[nodiscard]] std::unordered_map<std::string,std::string> MIME_csv_to_map(std::string filename);
+[[nodiscard]] std::unordered_map<std::string,std::string> MIMES(std::string directory_name);
+[[nodiscard]] std::string get_MIME(std::string extension);
+[[nodiscard]] std::string extension_from_path(std::string path);
 
 } // namespace fbw
 

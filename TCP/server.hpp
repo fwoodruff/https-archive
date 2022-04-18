@@ -25,13 +25,8 @@
 #include <thread>
 #include <condition_variable>
 #include <atomic>
-        
-
 
 namespace fbw {
-
-
-
 
 /*
  opens a TCP socket to the internet
@@ -58,7 +53,6 @@ class server {
     void accept_connection(const server_socket& sc, tp, std::function<std::unique_ptr<receiver>()> receiver_stack);
     void handle_event(fpollfd, tp) noexcept;
     
-    
     void server_thread_task();
     void do_task(fpollfd event);
     bool get_task();
@@ -72,17 +66,13 @@ class server {
     int events_started = 0;
     size_t threads_finished = 0;
 
-    
 public:
     server();
-    ~server(); // on windows startup/shutdown
+    ~server();
     void serve_some();
-    
 };
 
 } // namespace fbw
-
-
 
 #endif /* server_hpp */
 

@@ -37,7 +37,6 @@ poll_context::poll_context() {
 }
 
 poll_context::~poll_context() {
-    logger << "closing poll context" << std::endl;
     close(m_epfd);
 }
 
@@ -50,7 +49,7 @@ void poll_context::add_fd(const cppsocket& sock, event_var return_object, bool r
     event.data.fd = r_fd;
 
     if(epoll_ctl(m_epfd, EPOLL_CTL_ADD, r_fd, &event) == -1) {
-        logger << "errno: " << errno << std::endl;
+        std::cerr << "errno: " << errno << std::endl;
         assert(false);
     } else {
         auto succ = m_events.insert({r_fd, return_object});
@@ -65,14 +64,14 @@ void poll_context::mod_fd(const cppsocket& sock, bool read_state, bool write_sta
     event.data.fd = r_fd;
     
     if(epoll_ctl(m_epfd, EPOLL_CTL_MOD, r_fd, &event) == -1) {
-        logger << "errno: " << errno << std::endl;
+        std::cerr << "errno: " << errno << std::endl;
         assert(false);
     }
 }
 
 void poll_context::del_fd(const cppsocket& sock) {
     if(epoll_ctl(m_epfd, EPOLL_CTL_DEL, sock.get_native(), nullptr) == -1) {
-        logger << "errno: " << errno << std::endl;
+        std::cerr << "errno: " << errno << std::endl;
         assert(false);
     } else {
         size_t rm = m_events.erase(sock.get_native());
@@ -90,7 +89,7 @@ std::vector<fpollfd> poll_context::get_events(bool do_timeout) {
         if(errno == EINTR) {
             return events;
         }
-        logger << "errno: " << errno << std::endl;
+        std::cerr << "errno: " << errno << std::endl;
         assert(false);
     }
     events.resize(num_descriptors);
@@ -150,7 +149,7 @@ std::vector<fpollfd> poll_context::get_events(bool do_timeout) {
         if(errno == EINTR) {
             return events;
         }
-        logger << "errno: " << errno << std::endl;
+        std::cerr << "errno: " << errno << std::endl;
         assert(false);
     }
     events.reserve(num_descriptors);

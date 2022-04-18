@@ -15,7 +15,6 @@
 #include <fstream>
 
 
-extern std::fstream logger;
 
 namespace fbw {
 

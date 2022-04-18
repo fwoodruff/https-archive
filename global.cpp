@@ -21,7 +21,6 @@ const ssize_t fbw::MAX_SOCKETS = 5000;
 const int fbw::timeoutms = 5000;
 const ssize_t fbw::BUFFER_SIZE = 2000;
 
-std::fstream logger("log.txt", std::ios_base::out | std::ios_base::trunc);
 
 #else
 
@@ -33,8 +32,6 @@ const std::string fbw::rootdir ("/Users/freddiewoodruff/Documents/Programming/ht
 
 const std::string fbw::domain_name = "localhost";
 
-std::fstream logger("/Users/freddiewoodruff/Documents/Programming/https_server/https_server/log.txt",
-                    std::ios_base::out | std::ios_base::trunc);
 
 
 const ssize_t fbw::MAX_SOCKETS = 5000;
