@@ -313,6 +313,9 @@ bool verify_signature(const ct_u256& h,
                       const ct_u256& s,
                       const ct_u256& pub_x,
                       const ct_u256& pub_y) {
+    if(r == "0x0"_xl or s == "0x0"_xl) {
+        return false;
+    }
     auto s1 = invQ(s);
     // note P, Q, R are in Montgomery Jacobian coordinates
     auto P = point_multiply_affine( (h * s1) % secp256r1_q, secp256r1_gx, secp256r1_gy);
