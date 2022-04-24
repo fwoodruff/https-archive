@@ -32,7 +32,7 @@ extern const ssize_t BUFFER_SIZE;
 using ustring = std::basic_string<uint8_t>;
 
 template<typename T>
-[[nodiscard]] inline uint64_t checked_bigend_read(const T& container, size_t idx, size_t nbytes) {
+[[nodiscard]] inline uint64_t try_bigend_read(const T& container, size_t idx, size_t nbytes) {
     uint64_t len = 0;
     for(size_t i = idx; i < idx + nbytes; i ++) {
         len <<= 8;

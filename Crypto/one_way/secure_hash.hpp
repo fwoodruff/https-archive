@@ -35,7 +35,24 @@ private:
     std::array<uint8_t,block_size> data;
     std::array<uint32_t,8> state;
     bool done;
+};
+
+class sha384 final : public hash_base {
+public:
+    static constexpr int64_t block_size = 64;
+    sha384() noexcept;
     
+    std::unique_ptr<hash_base> clone() const override;
+    sha256& update_impl(const uint8_t* begin, size_t size) noexcept override;
+    
+    ustring hash() && override;
+    [[nodiscard]] size_t get_block_size() const noexcept override;
+private:
+    size_t datalen;
+    uint64_t bitlen;
+    std::array<uint8_t,block_size> data;
+    std::array<uint64_t,8> state;
+    bool done;
 };
 
 class sha1 final : public hash_base {

@@ -109,7 +109,6 @@ size_t cppsocket::send(const void *buf, size_t len, int flags) const {
     assert(m_fd != -1);
     const ssize_t bytes = ::send(m_fd , buf, len, flags);
     if(bytes == -1) {
-        std::cout << "send error: " << errno << std::endl;
         throw std::system_error(errno, std::generic_category());
     }
     return bytes;

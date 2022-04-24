@@ -194,7 +194,6 @@ void server::do_task(fpollfd event) {
                         break;
                 }
             } catch(const std::runtime_error& e) {
-                std::cout << e.what() << std::endl;
             } catch(...) {
                 assert(false);
             }
@@ -242,7 +241,6 @@ static int loop_index = 0;
 void server::serve_some() {
     assert(connections.size() <= static_cast<size_t>(MAX_SOCKETS));
     loop_index++;
-    std::cout << "loop count: " << loop_index << std::endl;
     
     bool can_accept = connections.size() < static_cast<size_t>(MAX_SOCKETS - 11);
     if(can_accept_old != can_accept) {

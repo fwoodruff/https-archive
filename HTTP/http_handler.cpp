@@ -41,7 +41,7 @@ std::string respond(const std::string& rootdirectory, std::string header, std::s
     }
     if(method[0] == "POST") {
         handle_POST(std::move(header), std::move(body));
-        return file_to_http(rootdir, filename);
+        return file_to_http(rootdirectory, filename);
     }
     throw http_error("405 Method Not Allowed\r\n");
 }

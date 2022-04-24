@@ -56,7 +56,7 @@ connection::~connection() {
         try {
             context->del_fd(m_socket);
         } catch(const std::system_error& e) {
-            std::cout << e.what();
+            std::cerr << e.what();
             assert(false);
         } catch(...) {
             assert(false);
@@ -165,7 +165,6 @@ bool connection::handle_connection(fpollfd event, time_point<steady_clock,nanose
                 
         }
     } catch(const std::runtime_error& e) {
-        std::cout << e.what() << std::endl;
         activity = status::closed;
     } catch(...) {
         assert(false);

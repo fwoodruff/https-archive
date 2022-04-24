@@ -63,5 +63,5 @@ int main() {
     } catch(...) {
         std::cerr << "unexpected server close\n" << std::endl;
     }
-    std::cout << "end main()" << std::endl;
+    std::cerr << "end main()" << std::endl;
 }

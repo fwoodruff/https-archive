@@ -34,7 +34,6 @@ status_message HTTP::handle(ustring uinput) noexcept {
             if(header.empty()) {
                 header = extract(input, "\r\n\r\n");
             }
-            
             if(header.empty()) {
                 break;
             }
@@ -62,7 +61,7 @@ status_message HTTP::handle(ustring uinput) noexcept {
             }
             header.clear();
 
-            output.m_response += to_unsigned(response);
+            output.m_response += to_unsigned(std::move(response));
         }
     } catch(const http_error& e) {
         header.clear();

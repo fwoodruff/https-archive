@@ -75,14 +75,12 @@ status_message TLS::handle_input(ustring input) noexcept {
             r = cipher_context->encrypt(r);
         }
         auto str = r.serialise();
-        std::cout << "from ssl error\n";
         return {str, status::closing };
     } catch(const std::out_of_range& e) {
         next.reset();
-        std::cout << "from out of range error\n";
         return {{}, status::closed };
     } catch (const std::logic_error& e) {
-        std::cout << "from logic error\n";
+        std::cerr << "from logic error\n";
         return {{}, status::closed };
     } catch(...) {
         assert(false);
@@ -151,7 +149,7 @@ void TLS::client_handshake(ustring handshake_record, status_message& output) {
 }
 
 void TLS::handle_client_hello(const ustring& hello, status_message& output) {
-    assert(hello.at(0) == 1);
+    assert(hello.size() >= 1 and hello[0] == 1);
     
     
     if (is_client_hello_done == true or
@@ -163,7 +161,7 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
     }
     
     
-    size_t len = checked_bigend_read(hello,1,3);
+    size_t len = try_bigend_read(hello,1,3);
     if(len+4 != hello.size()) {
         throw ssl_error("bad hello", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
@@ -175,9 +173,9 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
     std::copy(&hello.at(6), &hello.at(38), m_client_random.begin());
     // session ID
     size_t idx = 38;
-    idx += checked_bigend_read(hello, idx, 1) + 1;
+    idx += try_bigend_read(hello, idx, 1) + 1;
     // cipher suites
-    size_t ciphers_len = checked_bigend_read(hello, idx, 2);
+    size_t ciphers_len = try_bigend_read(hello, idx, 2);
     hello.at(idx+ ciphers_len + 2);
     cipher = cipher_choice(hello.substr(idx+2, ciphers_len));
     is_client_hello_done = true;
@@ -189,12 +187,12 @@ void TLS::handle_client_hello(const ustring& hello, status_message& output) {
     }
     idx += 2;
     // extensions
-    ssize_t extensions_len = checked_bigend_read(hello,idx,2);
+    ssize_t extensions_len = try_bigend_read(hello,idx,2);
 
     idx += 2;
     while(extensions_len > 0) {
-        size_t extension_type = checked_bigend_read(hello,idx,2);
-        size_t extension_len = checked_bigend_read(hello,idx+2,2);
+        size_t extension_type = try_bigend_read(hello, idx, 2);
+        size_t extension_len = try_bigend_read(hello, idx + 2, 2);
         switch(extension_type) {
             case 0x000a:
             {
@@ -229,7 +227,7 @@ tls_record TLS::server_hello() {
     hello_record.m_contents.reserve(49);
     hello_record.m_contents = {static_cast<uint8_t>(HandshakeType::server_hello), 0x00, 0x00, 0x00, 0x03, 0x03};
     
-    randomgen.randgen(&m_server_random[0], 32);
+    randomgen.randgen(m_server_random.data(), 32);
     hello_record.m_contents.append(m_server_random.cbegin(), m_server_random.cend());
     hello_record.m_contents.append({0}); // session ID
     ustring ciph;
@@ -250,7 +248,7 @@ tls_record TLS::server_hello() {
     return hello_record;
 }
 
-tls_record TLS::server_certificate(){
+tls_record TLS::server_certificate() {
     tls_record certificate_record(ContentType::Handshake);
     certificate_record.m_contents = {static_cast<uint8_t>(HandshakeType::certificate), 0,0,0, 0,0,0};
     
@@ -258,15 +256,15 @@ tls_record TLS::server_certificate(){
 
     for (const auto& cert : certs) {
         ustring cert_header;
-        cert_header.append({0,0,0});
+        cert_header.append({0, 0, 0});
         checked_bigend_write(cert.size(), cert_header, 0, 3);
         certificate_record.m_contents.append(cert_header);
         certificate_record.m_contents.append(cert);
     }
 
     assert(certificate_record.m_contents.size() >= 7);
-    checked_bigend_write(certificate_record.m_contents.size()-4, certificate_record.m_contents, 1, 3);
-    checked_bigend_write(certificate_record.m_contents.size()-7, certificate_record.m_contents, 4, 3);
+    checked_bigend_write(certificate_record.m_contents.size() - 4, certificate_record.m_contents, 1, 3);
+    checked_bigend_write(certificate_record.m_contents.size() - 7, certificate_record.m_contents, 4, 3);
 
     if(is_client_hello_done) {
         handshake_hasher->update(certificate_record.m_contents);
@@ -352,7 +350,7 @@ tls_record TLS::server_hello_done() {
 }
 
 void TLS::handle_client_key_exchange(const ustring& key_exchange) {
-    key_exchange.at(0);
+    assert(key_exchange.size() >= 1);
     assert(key_exchange[0] == static_cast<uint8_t>(HandshakeType::client_key_exchange));
     
     if (is_client_hello_done == false or
@@ -363,9 +361,8 @@ void TLS::handle_client_key_exchange(const ustring& key_exchange) {
         throw ssl_error("bad handshake message ordering", AlertLevel::fatal, AlertDescription::unexpected_message);
     }
     
-    
-    const size_t len = checked_bigend_read(key_exchange,1,3);
-    const size_t keylen = checked_bigend_read(key_exchange,4,1);
+    const size_t len = try_bigend_read(key_exchange,1,3);
+    const size_t keylen = try_bigend_read(key_exchange,4,1);
     if(len+4 != key_exchange.size() or len != keylen + 1) {
         throw ssl_error("bad key exchange", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
@@ -423,7 +420,7 @@ void TLS::client_handshake_finished(const ustring& finish, status_message& outpu
     
     
     
-    const size_t len = checked_bigend_read(finish,1,3);
+    const size_t len = try_bigend_read(finish,1,3);
     if(len != 12) {
         throw ssl_error("bad verification", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
@@ -665,7 +662,7 @@ std::array<uint8_t,48> TLS::make_master_secret(const std::unique_ptr<const hash_
 
 unsigned short TLS::cipher_choice(const ustring& s) {
     for(size_t i = 0; i < s.size(); i += 2) {
-        uint16_t x = checked_bigend_read(s, i, 2);
+        uint16_t x = try_bigend_read(s, i, 2);
         if (x == static_cast<uint16_t>(cipher_suites::TLS_ECDHE_ECDSA_WITH_CHACHA20_POLY1305_SHA256)) {
             cipher_context = std::make_unique<cha::ChaCha20_Poly1305>();
             hasher_factory = std::make_unique<sha256>();
@@ -674,7 +671,7 @@ unsigned short TLS::cipher_choice(const ustring& s) {
         }
     }
     for(size_t i = 0; i < s.size(); i += 2) {
-        uint16_t x = checked_bigend_read(s, i, 2);
+        uint16_t x = try_bigend_read(s, i, 2);
         if(x == static_cast<uint16_t>(cipher_suites::TLS_ECDHE_ECDSA_WITH_AES_128_GCM_SHA256)) {
             cipher_context = std::make_unique<aes::AES_128_GCM_SHA256>();
             hasher_factory = std::make_unique<sha256>();
@@ -729,7 +726,7 @@ std::optional<tls_record> try_extract_record(ustring& input) {
     }
     tls_record out(static_cast<ContentType>(input[0]), input[1], input[2] );
 
-    size_t record_size = checked_bigend_read(input,3,2);
+    size_t record_size = try_bigend_read(input,3,2);
     if(input.size() < record_size + 5) {
         return std::nullopt;
     }

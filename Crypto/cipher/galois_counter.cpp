@@ -57,7 +57,7 @@ static inline void AES_PUT_BE64(uint8_t *a, uint64_t val)
 
 static void inc32(aes_block& block) {
     assert(block.size() >= 4);
-    auto val = checked_bigend_read(block, block.size() - 4, 4);
+    auto val = try_bigend_read(block, block.size() - 4, 4);
     val++;
     checked_bigend_write(val, block, block.size() - 4, 4);
     assert(val != uint32_t(-1));
@@ -382,9 +382,5 @@ tls_record AES_128_GCM_SHA256::decrypt(tls_record record) {
      
     return record;
 }
-
-
-
-
 
 } // namespace fbw
