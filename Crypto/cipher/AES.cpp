@@ -272,8 +272,7 @@ roundkey aes_key_schedule(const aeskey& AESkey) {
  performs the encryption on a block
  */
 aes_block aes_encrypt(aes_block plain_block, const roundkey& roundkeys) noexcept {
-    //assert(roundkeys.size() >= Nb);
-    static_assert(Nb == 4, "hi");
+    static_assert(Nb == 4, "bad AES block size");
     const ssize_t Nra = roundkeys.size()/Nb - 1;
     
     AddRoundKey(plain_block, &roundkeys[0]);
