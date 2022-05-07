@@ -24,6 +24,7 @@ namespace fbw {
 [[nodiscard]] std::unordered_map<std::string,std::string> MIMES(std::string directory_name);
 [[nodiscard]] std::string get_MIME(std::string extension);
 [[nodiscard]] std::string extension_from_path(std::string path);
+std::string Mimefromfile(const std::string &filename);
 
 } // namespace fbw
 

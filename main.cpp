@@ -24,6 +24,17 @@
 
 // heartbeats are handled safely but wrong
 
+// PEMextract asserts should really be throws
+
+// POST requests sometimes fail on mobile, try to understand why
+
+// some network setups complain about my certificates
+
+// log IP addresses of connectees
+
+// TLS.cpp at line 64 should return a boolean on whether to gracefully close
+// the connection following the 'exceptions should be exceptional' principle.
+
 int main() {
     try {
             {

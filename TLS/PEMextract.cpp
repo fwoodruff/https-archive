@@ -72,7 +72,7 @@ ustring encode64(ustring data) {
         }
         buffer <<= 8;
         buffer |= data[i];
-        j+=8;
+        j += 8;
         while(j >= 6) {
             j -= 6;
             out.append({num_to_letter((buffer>>j) & 0x3f)});
@@ -92,14 +92,13 @@ ustring decode64(std::string data) {
         if (data[i] == '=') {
             continue;
         }
-        buffer <<=6;
+        buffer <<= 6;
         buffer |= (uint16_t(letter_to_num(data[i]) & 0x3f));
-        j+=6;
-        if(j >=8) {
+        j += 6;
+        if(j >= 8) {
             j -= 8;
-            out.append({(unsigned char)(buffer>>j)});
+            out.append({static_cast<uint8_t>(buffer >> j)});
         }
-
     }
     return out;
 }
@@ -119,10 +118,10 @@ std::array<uint8_t,32> ec_deserialise(ustring asn1) {
 }*/
 
 std::array<uint8_t,32> deserialise(ustring asn1) {
-    assert(asn1.size() >=38);
+    assert(asn1.size() >= 68);
     // currently this ignores everything and assumes the file is secp256r1
-    std::array<unsigned char,32> privkey;
-    std::copy(&asn1[36], &asn1[36+32], privkey.begin());
+    std::array<unsigned char, 32> privkey;
+    std::copy(&asn1[36], &asn1[36 + 32], privkey.begin());
     return privkey;
 }
 
@@ -169,7 +168,6 @@ std::vector<ustring> der_cert_from_file(std::string filename) {
     std::stringstream buffer;
     buffer << t.rdbuf();
     std::string file = buffer.str();
-    
     
     size_t end_idx = 0;
     std::vector<ustring> output;

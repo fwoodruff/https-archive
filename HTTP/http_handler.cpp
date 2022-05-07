@@ -63,31 +63,15 @@ void handle_POST(std::string header, std::string body) {
 }
 
 
+
 /*
  GET requests need to return files with a header
  */
 std::string file_to_http(const std::string& rootdir, std::string filename) {
     constexpr time_t day = 24*60*60;
     
-    std::transform(filename.begin(), filename.end(), filename.begin(),
-        [](unsigned char c){ return std::tolower(c); });
-    
-    if( filename == "/") {
-        filename = "/index.html";
-    }
-    
-    if(filename.find(".") == std::string::npos) {
-        filename.append(".html");
-    }
-    
-    std::string MIME;
-    if(filename == "/favicon.ico") {
-        MIME = "image/webp";
-    } else {
-        auto extension = extension_from_path(filename);
-        MIME = get_MIME(std::move(extension));
-    }
-    
+    filename = fix_filename(std::move(filename));
+    std::string MIME = Mimefromfile(filename);
     
     std::ifstream t(rootdir+filename);
     
@@ -127,19 +111,8 @@ std::string redirect(std::string header, std::string domain) {
         throw http_error("400 Bad Request");
     }
     
-    std::string filename = method[1];
-    
-    if( filename == "/") {
-        filename = "/index.html";
-    }
-    
-    std::string MIME;
-    if(filename == "/favicon.ico") {
-        MIME = "image/webp";
-    } else {
-        auto extension = extension_from_path(filename);
-        MIME = get_MIME(std::move(extension));
-    }
+    std::string filename = fix_filename(std::move(method[1]));
+    std::string MIME = Mimefromfile(filename);
     
     std::string body = "HTTP/1.1 301 Moved Permanently";
     

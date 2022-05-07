@@ -33,15 +33,14 @@ namespace fbw {
  */
 std::string timestring(time_t t) {
     char buf[48];
-    const std::tm tm = *std::gmtime(&t);
-    std::strftime(buf, sizeof buf, "%a, %d %b %Y %H:%M:%S %Z", &tm);
+    std::tm* tm_ptr = std::gmtime(&t);
+    assert(tm_ptr != nullptr);
+    const std::tm tm = *tm_ptr;
+    auto err = std::strftime(buf, sizeof buf, "%a, %d %b %Y %H:%M:%S %Z", &tm);
+    assert(err != 0);
     const std::string out(buf);
     return out;
 }
-
-
-
-
 
 /*
  helps parse HTTP streams
@@ -180,6 +179,21 @@ std::vector<std::string> get_method(const std::string& header) {
     }
     return out;
 }
+
+std::string fix_filename(std::string filename) {
+    if( filename == "/") {
+        return "/index.html";
+    }
+    std::transform(filename.begin(), filename.end(), filename.begin(),
+        [](unsigned char c){ return std::tolower(c); });
+    if(filename.find(".") == std::string::npos) {
+        filename.append(".html");
+    }
+    return filename;
+}
+
+
+
 
 
 void shuffle(std::array<uint8_t, 32>& state) {

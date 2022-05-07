@@ -27,7 +27,7 @@ status_message HTTP::handle(ustring uinput) noexcept {
     input.append(to_signed(std::move(uinput)));
     status_message output { .m_status = status::read_write };
     try {
-        while(1) {
+        for(;;) {
             if(input.size() > max_bytes_queued) {
                 throw http_error("414 URI Too Long");
             }

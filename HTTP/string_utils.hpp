@@ -72,6 +72,11 @@ std::string extract(std::string& bytes, std::string delimiter);
  */
 [[nodiscard]] std::string make_eTag(const std::string& file_contents);
 
+/*
+ adds "index", ".html" as necessary and moves to lowercase
+ */
+std::string fix_filename(std::string filename);
+
 std::string make_server_name();
 
 } // namespace fbw

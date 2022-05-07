@@ -230,7 +230,6 @@ void server::server_thread_task() {
         pool_cv.notify_one();
         while(get_task()) { }
         loop_cv.notify_one();
-        
     }
     pool_cv.notify_one();
 }

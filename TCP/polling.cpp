@@ -97,7 +97,7 @@ std::vector<fpollfd> poll_context::get_events(bool do_timeout) {
     for(int i = 0; i < num_descriptors; i++) {
         events[i].read  = bool(epoll_events[i].events & EPOLLIN );
         events[i].write = bool(epoll_events[i].events & EPOLLOUT);
-        assert(m_events.find(epoll_events[i].data.fd) != m_events.end());
+        assert(epoll_events[i].data.fd < m_events.size());
         events[i].node = m_events[epoll_events[i].data.fd];
     }
     return events;

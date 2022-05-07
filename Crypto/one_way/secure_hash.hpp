@@ -32,7 +32,7 @@ public:
 private:
     size_t datalen;
     uint64_t bitlen;
-    std::array<uint8_t,block_size> data;
+    std::array<uint8_t,block_size> m_data;
     std::array<uint32_t,8> state;
     bool done;
 };

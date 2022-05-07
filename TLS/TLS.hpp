@@ -40,7 +40,7 @@ class TLS final : public receiver {
     status_message handle_input(ustring input) noexcept;
     status_message handle_flush() noexcept;
     
-    void handle_record(tls_record record, status_message& output);
+    bool handle_record(tls_record record, status_message& output);
     void client_handshake(ustring handshake_message, status_message& output);
     void client_change_cipher_spec(const ustring& change_message);
     bool client_alert(const ustring& alert_message, status_message& output);

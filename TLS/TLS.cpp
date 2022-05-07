@@ -61,11 +61,15 @@ status_message TLS::handle_input(ustring input) noexcept {
             if(!record) {
                 break;
             }
-            handle_record(std::move(*record), output);
+            bool do_close = handle_record(std::move(*record), output);
+            if(do_close) {
+                return {{}, status::closed };
+            }
             if(more_to_send) {
                 break;
             }
         }
+        return output;
     } catch(const ssl_error& e) {
         auto r = tls_record(ContentType::Alert);
         r.m_contents = { static_cast<uint8_t>(e.m_l), static_cast<uint8_t>(e.m_d) };
@@ -85,7 +89,7 @@ status_message TLS::handle_input(ustring input) noexcept {
     } catch(...) {
         assert(false);
     }
-    return output;
+    assert(false);
 }
 
 status_message TLS::handle_flush() noexcept {
@@ -93,7 +97,7 @@ status_message TLS::handle_flush() noexcept {
     return msg;
 }
 
-void TLS::handle_record(tls_record record, status_message& output) {
+bool TLS::handle_record(tls_record record, status_message& output) {
     if (record.get_major_version() != 3) {
         throw ssl_error("unsupported version", AlertLevel::fatal, AlertDescription::protocol_version);
     }
@@ -105,12 +109,16 @@ void TLS::handle_record(tls_record record, status_message& output) {
         record = cipher_context->decrypt(std::move(record));
     }
 
+    bool do_close = false;
     switch(record.get_type()) {
         case static_cast<uint8_t>(ContentType::ChangeCipherSpec):
             client_change_cipher_spec(std::move(record.m_contents));
             break;
         case static_cast<uint8_t>(ContentType::Alert):
-            client_alert(std::move(record.m_contents), output);
+            do_close = client_alert(std::move(record.m_contents), output);
+            if (do_close) {
+                return true;
+            }
             break;
         case static_cast<uint8_t>(ContentType::Handshake):
             client_handshake(std::move(record.m_contents), output);
@@ -125,6 +133,7 @@ void TLS::handle_record(tls_record record, status_message& output) {
             throw ssl_error("bad record type", AlertLevel::fatal, AlertDescription::illegal_parameter);
             break;
     }
+    return false;
 }
  
 void TLS::client_handshake(ustring handshake_record, status_message& output) {
@@ -361,9 +370,9 @@ void TLS::handle_client_key_exchange(const ustring& key_exchange) {
         throw ssl_error("bad handshake message ordering", AlertLevel::fatal, AlertDescription::unexpected_message);
     }
     
-    const size_t len = try_bigend_read(key_exchange,1,3);
-    const size_t keylen = try_bigend_read(key_exchange,4,1);
-    if(len+4 != key_exchange.size() or len != keylen + 1) {
+    const size_t len = try_bigend_read(key_exchange, 1, 3);
+    const size_t keylen = try_bigend_read(key_exchange, 4, 1);
+    if(len + 4 != key_exchange.size() or len != keylen + 1) {
         throw ssl_error("bad key exchange", AlertLevel::fatal, AlertDescription::handshake_failure);
     }
     
@@ -380,7 +389,6 @@ void TLS::handle_client_key_exchange(const ustring& key_exchange) {
     
     // AES_256_CBC_SHA256 has the largest amount of material at 128 bytes
     ustring key_material = expand_master(master_secret, m_server_random, m_client_random, 128);
-    
     
     cipher_context->set_key_material(key_material);
     handshake_hasher->update(key_exchange);
@@ -418,8 +426,6 @@ void TLS::client_handshake_finished(const ustring& finish, status_message& outpu
         throw ssl_error("bad handshake message ordering", AlertLevel::fatal, AlertDescription::unexpected_message);
     }
     
-    
-    
     const size_t len = try_bigend_read(finish,1,3);
     if(len != 12) {
         throw ssl_error("bad verification", AlertLevel::fatal, AlertDescription::handshake_failure);
@@ -435,7 +441,6 @@ void TLS::client_handshake_finished(const ustring& finish, status_message& outpu
     seed.append(handshake_hash.cbegin(), handshake_hash.cend());
 
     const auto ctx = hmac(hasher_factory->clone(), master_secret);
-    
     
     auto ctx2 = ctx;
     auto a1 = ctx2
@@ -607,6 +612,7 @@ bool TLS::client_alert(const ustring& alert_message, status_message& output) {
 }
 
 void TLS::client_heartbeat(const ustring& heartbeat_message, status_message& output) {
+    // fix me
     if(heartbeat_message.size() != 1 or heartbeat_message[0] != 0x01) {
         throw ssl_error("heartbleed", AlertLevel::fatal, AlertDescription::access_denied);
     }
@@ -654,8 +660,9 @@ std::array<uint8_t,48> TLS::make_master_secret(const std::unique_ptr<const hash_
                     .hash();
 
     std::array<uint8_t,48> master_secret;
+    assert(p2.size() >= 16);
     std::copy(p1.cbegin(), p1.cend(), master_secret.begin());
-    std::copy(&*p2.begin(), &p2[16], &master_secret[32]);
+    std::copy(p2.begin(), p2.begin() + 16, &master_secret[32]);
     
     return master_secret;
 }

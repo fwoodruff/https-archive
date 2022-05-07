@@ -127,7 +127,7 @@ void sha256_transform(std::array<uint32_t,8>& state, const std::array<uint8_t,64
         }
         return kl;
     }();
-    std::array<uint32_t,64> m;
+    std::array<uint32_t, 64> m {};
     for (int i = 0, j = 0; i < 16; ++i, j += 4) {
         m[i] = (data[j] << 24) | (data[j + 1] << 16) | (data[j + 2] << 8) | (data[j + 3]);
     }
@@ -193,7 +193,7 @@ std::unique_ptr<hash_base> sha256::clone() const {
 
 
 
-sha256::sha256() noexcept  : datalen(0),  bitlen(0), data(), done(false) {
+sha256::sha256() noexcept  : datalen(0),  bitlen(0), m_data(), done(false) {
     constexpr auto state0 = [](){
         int idx = 0;
         std::array<uint32_t,8> kl {};
@@ -219,10 +219,11 @@ sha256::sha256() noexcept  : datalen(0),  bitlen(0), data(), done(false) {
 
 sha256& sha256::update_impl(const uint8_t* const begin, size_t size) noexcept {
     for (size_t i = 0; i < size; ++i) {
-        assert(datalen < data.size());
-        data[datalen++] = begin[i];
+        assert(datalen < m_data.size());
+        m_data[datalen] = begin[i];
+        ++datalen;
         if (datalen == 64) {
-            sha256_transform(state, data);
+            sha256_transform(state, m_data);
             bitlen += 512;
             datalen = 0;
         }
@@ -236,22 +237,30 @@ ustring sha256::hash() && {
     ustring hash;
     hash.resize(32);
     size_t dlen = datalen;
-    data[dlen++] = 0x80;
+    assert(dlen < m_data.size());
+    m_data[dlen] = 0x80;
+    ++dlen;
     while (dlen < 56) {
-        data[dlen++] = 0x00;
+        assert(dlen < m_data.size());
+        m_data[dlen] = 0x00;
+        ++dlen;
     }
     if (datalen >= 56) {
-        sha256_transform(state, data);
-        std::fill_n(data.begin(),56,0);
+        sha256_transform(state, m_data);
+        static_assert(decltype(m_data)().size() == 64, "bad context");
+        std::fill_n(m_data.begin(),56,0);
     }
     bitlen += datalen * sizeof(bitlen);
     for(size_t i = 0; i < sizeof(bitlen); i++) {
-        data[63-i] = bitlen >> (CHAR_BIT * i);
+        assert(i <= 63);
+        m_data[63-i] = bitlen >> (CHAR_BIT * i);
     }
-    sha256_transform(state, data);
+    sha256_transform(state, m_data);
     for (size_t i = 0; i < sizeof(state[0]); ++i) {
         for(size_t j = 0; j < CHAR_BIT; j++) {
-            hash[i + j*sizeof(state[0])]= (state[j] >> (24 - i * CHAR_BIT)) & 0xff;
+            assert(i + j*sizeof(state[0]) < hash.size());
+            assert(24 >= i * CHAR_BIT);
+            hash[i + j*sizeof(state[0])] = (state[j] >> (24 - i * CHAR_BIT)) & 0xff;
         }
     }
     done = true;
@@ -259,6 +268,9 @@ ustring sha256::hash() && {
 }
 
 
+/*
+ used in CBC mode
+ */
 sha1::sha1() : datalen(0), m_data({}), done(false) {
     m_state[0] = 0x67452301;
     m_state[1] = 0xEFCDAB89;

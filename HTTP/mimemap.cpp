@@ -38,6 +38,9 @@ std::unordered_map<std::string,std::string> MIME_csv_to_map(std::string filename
         while (std::getline(s, field,',')) {
             fields.push_back(field);
         }
+        if(fields.size() < 2) {
+            throw std::logic_error("failed to read MIMEs");
+        }
         MIME_types.insert({fields[0],fields[1]});
     }
     return MIME_types;
@@ -119,5 +122,14 @@ std::string get_MIME(std::string extension) {
         assert(false);
     }
 }
+
+std::string Mimefromfile(const std::string &filename) {
+    if(filename == "/favicon.ico") {
+        return "image/webp";
+    } else {
+        return get_MIME(extension_from_path(filename));
+    }
+}
+
 
 } // namespace fbw
